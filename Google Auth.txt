@@ -1,0 +1,11 @@
+Instead of storing passwords in MongoDB, you’ll use:
+🔐 Google OAuth Login (Sign in with Google)
+So flow becomes:
+Copy code
+
+User → Google → returns profile → your backend verifies → create JWT → user logged in
+You still use MongoDB later only to store user profile (no passwords).
+This is how real products work.
+Architecture (important)
+Frontend (React) → Google popup → receives Google ID Token → send token to backend
+Backend (Node/Express) → verify token using Google API → create JWT session → store user (optional) → login success

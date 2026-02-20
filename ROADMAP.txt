@@ -1,0 +1,394 @@
+Here is your concatenated roadmap properly formatted for NOTEPAD
+(plain text, structured, clean headings)
+
+
+---
+
+FAANG MAJOR PROJECT ROADMAP
+CODE EVALUATION / CODING PLATFORM (LEETCODE-LIKE)
+
+
+---
+
+PROJECT GOAL You are building a Code Evaluation Platform where thousands of users can submit programs and the system safely compiles, executes, scores, ranks, and analyzes them.
+
+This demonstrates:
+
+distributed processing
+
+queue systems
+
+sandbox execution
+
+caching
+
+database modeling
+
+concurrency
+
+scalability
+
+
+FAANG wants to see backend engineering thinking — not tutorial CRUD apps.
+
+
+---
+
+WHAT FAANG WANTS TO SEE
+
+Authentication & Authorization (JWT + refresh tokens)
+
+System design thinking (scalable architecture)
+
+Database design (indexes, relations, optimization)
+
+Caching
+
+Background jobs
+
+Rate limiting
+
+Security
+
+Clean architecture
+
+Performance handling
+
+Edge cases
+
+
+
+---
+
+CORE PROJECT IDEA
+
+"LeetCode / Codeforces Like Coding Platform"
+
+This is NOT a UI project.
+This is a SYSTEM DESIGN project.
+
+
+---
+
+HIGH LEVEL SYSTEM ARCHITECTURE
+
+Client → API → Database → Queue → Worker → Sandbox → Result → Cache → Client
+
+
+---
+
+DATABASE COLLECTIONS
+
+Users
+Problems
+Submissions
+Contests
+Participation
+Leaderboard
+
+Use:
+
+indexing
+
+pagination
+
+aggregation pipelines
+
+
+
+---
+
+FEATURE SET (FINAL TARGET)
+
+1. SECURE AUTHENTICATION SYSTEM
+
+
+
+Access token (15 min)
+
+Refresh token (7 days)
+
+Refresh token rotation
+
+Multiple device sessions
+
+Logout from all devices
+
+Password reset via email token
+
+Email verification
+
+Account lock after brute force (Shows security engineering)
+
+
+
+---
+
+2. PROBLEM SERVICE Each problem contains:
+
+
+
+title
+
+difficulty
+
+constraints
+
+tags
+
+hidden test cases
+
+visible test cases
+
+time limit
+
+memory limit
+
+editorial
+
+
+Advanced:
+
+versioning
+
+hints unlocking
+
+company tags
+
+
+(Shows DB design skills)
+
+
+---
+
+3. SUBMISSION PIPELINE (CORE PART)
+
+
+
+Client ↓ API Server ↓ MongoDB (store submission) ↓ Redis Queue ↓ Judge Worker ↓ Docker Sandbox Execution ↓ Result Stored
+
+Must support:
+
+C++ / Java / Python
+
+compile error detection
+
+runtime error detection
+
+timeout detection
+
+infinite loop kill
+
+hidden test cases
+
+
+
+---
+
+4. WORKER SYSTEM (DISTRIBUTED PROCESSING)
+
+
+
+Separate worker service (not inside Express)
+
+multiple workers
+
+retry failed jobs
+
+priority queue (contest > practice)
+
+dead letter queue
+
+
+
+---
+
+5. CONTEST MODE
+
+
+
+scheduled contest start
+
+frozen leaderboard last 30 min
+
+penalty scoring
+
+rejudge submissions
+
+participation tracking
+
+
+
+---
+
+6. REAL TIME LEADERBOARD
+
+
+
+Use Redis Sorted Sets
+
+instant rank update
+
+tie breaking
+
+periodic recomputation
+
+rating update (Codeforces style)
+
+
+
+---
+
+7. CACHING LAYER
+
+
+
+Cache using Redis:
+
+problem details
+
+leaderboard
+
+user stats
+
+submission polling
+
+
+Implement cache invalidation.
+
+
+---
+
+8. RATE LIMITING & ABUSE PROTECTION
+
+
+
+spam submission prevention
+
+brute force login protection
+
+API abuse protection
+
+IP based limits
+
+user based limits
+
+exponential backoff
+
+
+
+---
+
+9. ANALYTICS SYSTEM
+
+
+
+Track:
+
+acceptance rate
+
+most failed test case
+
+difficulty prediction
+
+user progress graph
+
+topic weakness detection
+
+
+Use MongoDB aggregation pipelines.
+
+
+---
+
+10. NOTIFICATION SYSTEM
+
+
+
+Notify user when:
+
+contest starts
+
+submission judged
+
+rank changes
+
+
+Use background job queue.
+
+
+---
+
+BACKGROUND JOBS
+
+recalculate rankings
+
+expire contests
+
+clean temporary submissions
+
+
+
+---
+
+CODE EXECUTION ENGINE FLOW
+
+User submits code → API stores submission → pushed to Redis queue → worker picks job → code runs inside Docker sandbox → output compared → result saved
+
+
+---
+
+DETAILED FLOWS
+
+AUTHENTICATION FLOW User → Login → API validates → generate tokens → store session → authenticated
+If expired → Refresh API → new access token
+
+FETCH PROBLEM FLOW Frontend requests → check Redis → if not → MongoDB → cache → return
+
+SUBMISSION FLOW User submits → store QUEUED → push to queue → return "Running"
+
+WORKER FLOW Worker pulls job → compile → run test cases → compare output → store result
+
+RESULT FLOW Worker updates status → invalidate cache → update leaderboard
+
+USER RESULT FLOW Frontend polls /submission/:id → latest verdict
+
+LEADERBOARD FLOW Accepted → update score → Redis ranking → DB persistence
+
+
+---
+
+TECH STACK
+
+BACKEND Node.js + Express MongoDB Redis BullMQ Docker sandbox JWT auth
+
+FRONTEND Minimal React UI
+
+DEPLOYMENT AWS / Render / Railway Nginx Docker Compose
+
+
+---
+
+6 MONTH ROADMAP
+
+MONTH 1 Node + Express clean architecture Production grade Auth system
+
+MONTH 2 Problems + submissions + DB design
+
+MONTH 3 Judge worker + queue + docker execution
+
+MONTH 4 Contest + leaderboard + caching
+
+MONTH 5 Security + rate limiting + edge cases
+
+MONTH 6 Polish + deploy + documentation + resume wording
+
+
+---
+
+END OF ROADMAP
+
+
+---
+
+If you want, I can next create a daily study plan (what to learn each day) so you never feel stuck during the 6 months.
