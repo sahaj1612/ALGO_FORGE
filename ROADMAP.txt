@@ -1,16 +1,5 @@
-Here is your concatenated roadmap properly formatted for NOTEPAD
-(plain text, structured, clean headings)
-
-
----
-
-FAANG MAJOR PROJECT ROADMAP
-CODE EVALUATION / CODING PLATFORM (LEETCODE-LIKE)
-
-
----
-
-PROJECT GOAL You are building a Code Evaluation Platform where thousands of users can submit programs and the system safely compiles, executes, scores, ranks, and analyzes them.
+PROJECT GOAL : You are building a Code Evaluation Platform where thousands of users can 
+submit programs and the system safely compiles, executes, scores, ranks, and analyzes them.
 
 This demonstrates:
 
@@ -28,9 +17,7 @@ concurrency
 
 scalability
 
-
 FAANG wants to see backend engineering thinking — not tutorial CRUD apps.
-
 
 ---
 
@@ -56,8 +43,6 @@ Performance handling
 
 Edge cases
 
-
-
 ---
 
 CORE PROJECT IDEA
@@ -67,13 +52,11 @@ CORE PROJECT IDEA
 This is NOT a UI project.
 This is a SYSTEM DESIGN project.
 
-
 ---
 
 HIGH LEVEL SYSTEM ARCHITECTURE
 
 Client → API → Database → Queue → Worker → Sandbox → Result → Cache → Client
-
 
 ---
 
@@ -94,14 +77,11 @@ pagination
 
 aggregation pipelines
 
-
-
 ---
 
 FEATURE SET (FINAL TARGET)
 
 1. SECURE AUTHENTICATION SYSTEM
-
 
 
 Access token (15 min)
@@ -120,13 +100,9 @@ Email verification
 
 Account lock after brute force (Shows security engineering)
 
-
-
 ---
 
 2. PROBLEM SERVICE Each problem contains:
-
-
 
 title
 
@@ -158,12 +134,9 @@ company tags
 
 (Shows DB design skills)
 
-
 ---
 
 3. SUBMISSION PIPELINE (CORE PART)
-
-
 
 Client ↓ API Server ↓ MongoDB (store submission) ↓ Redis Queue ↓ Judge Worker ↓ Docker Sandbox Execution ↓ Result Stored
 
@@ -181,13 +154,9 @@ infinite loop kill
 
 hidden test cases
 
-
-
 ---
 
 4. WORKER SYSTEM (DISTRIBUTED PROCESSING)
-
-
 
 Separate worker service (not inside Express)
 
@@ -199,12 +168,9 @@ priority queue (contest > practice)
 
 dead letter queue
 
-
-
 ---
 
 5. CONTEST MODE
-
 
 
 scheduled contest start

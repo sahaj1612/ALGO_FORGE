@@ -1,0 +1,21 @@
+User can:
+
+Type code in console (Monaco Editor)
+
+Click Run
+
+Code runs inside Docker sandbox
+
+Output comes back to frontend
+
+-----------------------------------
+
+Frontend (React + Monaco Editor)
+        ↓
+Backend API (Node + Express)
+        ↓
+Docker Sandbox Container
+        ↓
+Compile + Run Code
+        ↓
+Send Output Back

@@ -1,0 +1,280 @@
+===============================
+FULL PRODUCTION CODING PLATFORM
+(ALGOFORGE ARCHITECTURE)
+===============================
+
+1) OVERALL ARCHITECTURE FLOW
+
+Client (React + Monaco Editor)
+        ↓
+Backend API (Node + Express)
+        ↓
+Submission Service
+        ↓
+Queue System (Redis + BullMQ)
+        ↓
+Worker Service
+        ↓
+Docker Sandbox Container
+        ↓
+Judge Engine
+        ↓
+Database (MongoDB)
+
+
+--------------------------------------------------
+
+2) WHY THIS ARCHITECTURE?
+
+• Thousands of users can click Run / Submit at same time
+• Backend must not execute code directly (unsafe + blocking)
+• Queue provides:
+    - Concurrency control
+    - Retry mechanism
+    - Rate limiting
+    - Priority execution
+• Workers allow horizontal scaling
+• Docker provides secure isolated execution
+• Judge system validates outputs
+
+
+--------------------------------------------------
+
+3) MAIN SERVICES
+
+A) FRONTEND SERVICE
+
+Technology:
+• React
+• Monaco Editor
+• Tailwind CSS
+• Axios
+
+Responsibilities:
+• Show problem list
+• Problem solving page
+• Code editor
+• Run button
+• Submit button
+• Custom input box
+• Show testcase results
+• Show submission history
+
+
+--------------------------------------------------
+
+B) BACKEND API SERVICE
+
+Technology:
+• Node.js
+• Express
+• MongoDB
+• JWT Authentication
+
+Responsibilities:
+• User authentication
+• Fetch problems
+• Create submission
+• Push job to queue
+• Return submission status
+
+
+--------------------------------------------------
+
+C) QUEUE SERVICE (VERY IMPORTANT)
+
+Technology:
+• Redis
+• BullMQ
+
+Responsibilities:
+• Store submission jobs
+• Manage execution order
+• Retry failed jobs
+• Handle high traffic
+• Prevent backend overload
+
+
+--------------------------------------------------
+
+D) WORKER SERVICE
+
+Separate Node process.
+
+Responsibilities:
+• Pick job from queue
+• Run docker sandbox
+• Execute testcases one by one
+• Compare output
+• Generate verdict
+• Save result in database
+
+
+--------------------------------------------------
+
+E) DOCKER SANDBOX ENGINE
+
+Each submission runs inside:
+
+• New isolated container
+• Limited CPU and memory
+• No internet access
+• Read-only filesystem
+• Auto container destroy after execution
+
+Security flags example:
+
+docker run --rm \
+--memory=150m \
+--cpus=0.5 \
+--network=none \
+--pids-limit=64 \
+--read-only
+
+
+--------------------------------------------------
+
+4) EXECUTION FLOW
+
+A) RUN CODE (Quick Execution)
+
+User clicks Run
+→ Frontend sends code to backend
+→ Backend runs quick docker sandbox
+→ Output returned immediately
+→ No database storage
+
+
+--------------------------------------------------
+
+B) SUBMIT CODE (Judge Execution)
+
+User clicks Submit
+→ Backend creates submission entry
+→ Status = QUEUED
+→ Job pushed to Redis queue
+→ Worker picks job
+→ Runs docker container for each testcase
+→ Judge compares expected vs actual output
+→ Verdict generated (AC / WA / TLE / RE)
+→ Result saved in database
+→ Frontend polls submission status
+
+
+--------------------------------------------------
+
+5) DATABASE DESIGN
+
+A) PROBLEM COLLECTION
+
+{
+  title,
+  difficulty,
+  description,
+  constraints,
+  examples,
+  starterCode,
+  testcases: [
+      {
+        input,
+        output,
+        hidden (boolean)
+      }
+  ]
+}
+
+
+B) SUBMISSION COLLECTION
+
+{
+  userId,
+  problemId,
+  code,
+  language,
+  status: QUEUED / RUNNING / ACCEPTED / WA / TLE / RE
+  runtime,
+  memory,
+  createdAt
+}
+
+
+--------------------------------------------------
+
+6) PRODUCTION FOLDER STRUCTURE
+
+algo-forge/
+
+frontend/
+backend/
+
+backend/
+   api/
+   models/
+   routes/
+   controllers/
+
+   queue/
+      submissionQueue.js
+
+   workers/
+      submissionWorker.js
+
+   sandbox/
+      js/
+      cpp/
+      java/
+      python/
+
+   judge/
+      compareOutput.js
+
+   docker/
+      Dockerfiles/
+
+
+--------------------------------------------------
+
+7) MULTI LANGUAGE DOCKER DESIGN
+
+Separate docker images:
+
+• algo-js-runner
+• algo-cpp-runner
+• algo-java-runner
+• algo-python-runner
+
+Worker selects image based on submission language.
+
+
+--------------------------------------------------
+
+8) SCALING ARCHITECTURE (FUTURE)
+
+• Kubernetes cluster
+• Multiple worker replicas
+• Horizontal auto scaling
+• Load balancer
+• Distributed Redis queue
+• Central database
+• Microservice deployment
+
+
+--------------------------------------------------
+
+9) NEXT DEVELOPMENT ROADMAP
+
+STEP 1 → Create Submission Model
+STEP 2 → Setup Redis + BullMQ Queue
+STEP 3 → Create Worker Process
+STEP 4 → Implement Judge Engine
+STEP 5 → Build Multi-language Docker Sandbox
+STEP 6 → Add Submit Button in Frontend
+STEP 7 → Implement Submission Status Polling
+STEP 8 → Add Leaderboard + Ranking System
+STEP 9 → Add Contest Mode
+STEP 10 → Deploy using Kubernetes
+
+
+===============================
+END OF PRODUCTION ARCHITECTURE
+===============================
