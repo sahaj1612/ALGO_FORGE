@@ -1,0 +1,170 @@
+===============================
+ONLINE JUDGE SCALABLE ARCHITECTURE
+(Using Redis + Queue + Worker)
+===============================
+
+
+1) WHAT IS REDIS?
+
+Redis is an in-memory database.
+
+• Data is stored in RAM (not disk)
+• Extremely fast (microseconds)
+• Used for:
+    - caching
+    - real-time analytics
+    - session storage
+    - message queues
+    - job scheduling
+
+
+--------------------------------
+2) PROBLEM WITH CURRENT JUDGE
+--------------------------------
+
+Current Flow (Synchronous):
+
+User clicks Submit
+→ Express server runs Docker
+→ Server waits for result
+→ Server returns response
+
+Problems:
+
+• Server gets blocked
+• Multiple submissions freeze backend
+• Cannot scale
+• Timeouts happen
+• Bad user experience
+
+
+--------------------------------
+3) REAL ONLINE JUDGE FLOW
+--------------------------------
+
+Asynchronous Judging using Queue
+
+Frontend
+   ↓
+Backend API
+   ↓
+Redis Queue (Job Added)
+   ↓
+Judge Worker (Background Process)
+   ↓
+Docker Execution
+   ↓
+Store Result in DB
+   ↓
+Frontend fetches result
+
+
+--------------------------------
+4) WHAT IS A QUEUE?
+
+Queue = Line of tasks
+
+Example:
+
+Job 1
+Job 2
+Job 3
+
+Worker picks jobs one by one.
+
+Benefits:
+
+• Order maintained
+• No server blocking
+• Retry possible
+• Load distribution
+
+
+--------------------------------
+5) WHAT IS A WORKER?
+
+Worker = Separate NodeJS process
+
+It runs continuously:
+
+while(true){
+   getJobFromQueue()
+   executeCode()
+   storeResult()
+}
+
+Workers can be scaled:
+
+1 worker → small load
+5 workers → medium load
+20 workers → high load
+
+
+--------------------------------
+6) WHY REDIS IS USED FOR QUEUE?
+
+• Ultra fast job push/pop
+• Pub/Sub system
+• Atomic operations
+• Supports distributed workers
+• Reliable
+
+
+--------------------------------
+7) NODE LIBRARY USED
+
+BullMQ (Most popular Redis queue library)
+
+Features:
+
+• Add job
+• Process job
+• Retry job
+• Delay job
+• Priority job
+• Concurrency control
+• Rate limiting
+
+
+--------------------------------
+8) PRODUCTION JUDGE ARCHITECTURE
+
+React Frontend
+      ↓
+Express API Server
+      ↓
+Redis Queue (BullMQ)
+      ↓
+Judge Worker Service
+      ↓
+Docker Sandbox
+      ↓
+MongoDB (store submissions)
+
+
+--------------------------------
+9) FRONTEND FLOW (ASYNC)
+
+User clicks Submit
+→ API returns "Submission Queued"
+→ UI shows "Running..."
+→ Frontend polls result API
+→ Verdict shown when ready
+
+
+--------------------------------
+10) BENEFITS
+
+• Non-blocking backend
+• Parallel judging
+• Scalable to thousands users
+• Fault tolerance
+• Retry failed jobs
+• Real product architecture
+• Strong resume project
+
+
+=================================
+THIS IS HOW LEETCODE / HACKERRANK
+SYSTEM DESIGN WORKS INTERNALLY
+=================================

@@ -4,12 +4,6 @@ WORKDIR /app
 
 COPY runner.js .
 
+RUN npm init -y
+
 CMD ["node", "runner.js"]
-
-# This container will:
-
-# Take user code
-
-# Execute it
-
-# Print output

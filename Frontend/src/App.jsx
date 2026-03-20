@@ -1,11 +1,13 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import HomePage from "./HomePage";
-import Practice from "./Practice";
-import Problems from "./pages/Problems";
-import Dashboard from "./Dashboard";
-import TopicPage from "./pages/TopicPage";
-import ExploreProblems from "./pages/ExploreProblems";
+
+import HomePage from "./pages/HomePage";
+import Dashboard from "./pages/Dashboard";
+import PracticePage from "./pages/PracticePage";
+import ProblemsList from "./pages/ProblemsList";
+import ProblemDetails from "./pages/ProblemDetails";
 import ProblemSolve from "./pages/ProblemSolve";
+import Profile from "./pages/Profile";
+import TopicPage from "./pages/TopicPage";
 
 function App() {
   return (
@@ -13,12 +15,12 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/practice" element={<Practice />} />
-        <Route path="/explore" element={<ExploreProblems />} />
-        <Route path="/problems" element={<Problems />} />
+        <Route path="/practice" element={<PracticePage />} />
+        <Route path="/explore" element={<ProblemsList />} />
+        <Route path="/problems/:id" element={<ProblemDetails />} />
+        <Route path="/problem/:id" element={<ProblemSolve />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/topic/:topicId" element={<TopicPage />} />
-        <Route path="/practice/:id" element={<Practice />} />
-        <Route path="/practice/static1" element={<ProblemSolve />} />
       </Routes>
     </BrowserRouter>
   );

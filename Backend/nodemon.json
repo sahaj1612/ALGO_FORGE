@@ -1,0 +1,7 @@
+{
+  "ignore": [
+    "sandbox/*",
+    "sandbox/code.js",
+    "sandbox/input.txt"
+  ]
+}

@@ -1,21 +1,17 @@
 const express = require("express");
 const router = express.Router();
 const Problem = require("../models/Problem");
+const auth = require("../middleware/authMiddleware");
 
-// Get all problems
+// ⭐ GET ALL PROBLEMS
 router.get("/", async (req, res) => {
   const problems = await Problem.find();
   res.json(problems);
 });
 
-// Get single problem by ID
-router.get("/:id", async (req, res) => {
+// ⭐ GET SINGLE PROBLEM
+router.get("/:id", auth, async (req, res) => {
   const problem = await Problem.findById(req.params.id);
-
-  if (!problem) {
-    return res.status(404).json({ message: "Problem not found" });
-  }
-
   res.json(problem);
 });
 

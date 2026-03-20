@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Code2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import "./index.css";
+import "../index.css";
 
 export default function HomePage() {
   const navigate = useNavigate();

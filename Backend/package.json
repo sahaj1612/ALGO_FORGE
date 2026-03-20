@@ -1,9 +1,14 @@
 {
   "name": "algoforge",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "nodemonConfig": {
+    "ignore": ["sandbox/*"]
   },
   "repository": {
     "type": "git",
@@ -25,7 +30,6 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.1",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0",
-    "react-router-dom": "^7.13.0"
+    "passport-google-oauth20": "^2.0.0"
   }
 }

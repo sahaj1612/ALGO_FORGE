@@ -1,15 +1,28 @@
-const { execSync } = require("child_process");
 const fs = require("fs");
 
-// Read user code
-const code = fs.readFileSync("code.js", "utf8");
+let output = "";
 
-// Save to file
-fs.writeFileSync("temp.js", code);
+// capture console.log
+const originalLog = console.log;
+
+console.log = (...args) => {
+  output += args.join(" ") + "\n";
+};
 
 try {
-    const output = execSync("node temp.js", { timeout: 2000 });
-    console.log(output.toString());
+
+  // read wrapped user code
+  const code = fs.readFileSync("code.js", "utf8");
+
+  // execute code
+  eval(code);
+
 } catch (err) {
-    console.log("Error:", err.message);
+
+  console.error(err.message);
+  process.exit(1);
+
 }
+
+// print captured output
+process.stdout.write(output);

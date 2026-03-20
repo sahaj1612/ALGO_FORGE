@@ -3,7 +3,7 @@ export const topics = {
     title: "Arrays",
     questions: {
       easy: "Find the maximum element in an array.",
-      medium: "Maximum Subarray Sum (Kadane’s Algorithm).",
+      medium: "Maximum Subarray Sum (Kadane's Algorithm).",
       hard: "Median of Two Sorted Arrays."
     }
   },
@@ -44,7 +44,7 @@ export const topics = {
     questions: {
       easy: "BFS traversal.",
       medium: "Detect cycle in graph.",
-      hard: "Dijkstra’s Algorithm."
+      hard: "Dijkstra's Algorithm."
     }
   },
   dynamicprogramming: {

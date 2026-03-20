@@ -85,11 +85,25 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
   res.json(user)
 })
 
+// MONGODB CONNECTION
+// const submitRoute = require("./routes/submitRoute");
+// app.use("/api/submit", submitRoute);
+
+
 app.use('/api', userRoutes)
 app.use('/api/problems', problemRoutes)
+
+const runRoute = require("./routes/runRoute");
+const submitRoute = require("./routes/submitRoute");
+
+app.use("/api/run", runRoute);
+app.use("/api/submit", submitRoute);
+
+app.use("/api/problems", problemRoutes);
 
 app.get('/', (req, res) => {
   res.send("AlgoForge Backend Running 🚀")
 })
 
-app.listen(5000, () => console.log("Server running on 5000"))
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log("Server running"));

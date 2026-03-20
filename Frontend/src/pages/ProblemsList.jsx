@@ -6,6 +6,7 @@ export default function ExploreProblems() {
   const [problems, setProblems] = useState([]);
   const [search, setSearch] = useState("");
   const [difficulty, setDifficulty] = useState("All");
+  const [user, setUser] = useState(null); // user state for profile
 
   const navigate = useNavigate();
 
@@ -16,13 +17,69 @@ export default function ExploreProblems() {
       .catch(err => console.error(err));
   }, []);
 
+    /// profile
+
+    useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+
+    if (storedToken) {
+      fetch("http://localhost:5000/api/profile", {
+        headers: {
+          Authorization: `Bearer ${storedToken}`,
+        },
+      })
+        .then((res) => res.json())
+        .then((data) => setUser(data))
+        .catch((err) => console.log(err));
+    } else {
+      navigate("/");   // if not logged in
+    }
+  }, []);
+
   const filtered = problems.filter(p =>
     p.title.toLowerCase().includes(search.toLowerCase()) &&
     (difficulty === "All" || p.difficulty === difficulty)
   );
 
   return (
+
+    
+
     <div className="min-h-screen bg-black text-white px-10 py-10">
+
+       {/* ✅ HEADER */}
+    <div className="flex justify-between items-center mb-8">
+
+      {/* BACK BUTTON */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 
+        bg-zinc-900 border border-red-900/40
+        px-4 py-2 rounded-xl
+        hover:border-red-500 transition"
+      >
+        ← Back
+      </button>
+
+      {/* PROFILE */}
+        {user && (
+          <div className="flex items-center gap-3">
+            <img
+              src={user.picture}
+              alt="profile"
+              onClick={() => navigate("/profile")}
+              className="w-11 h-11 rounded-full border-2 border-red-500 
+              hover:scale-110 transition duration-300 cursor-pointer"
+            />
+
+            <div className="hidden md:block">
+              <p className="font-semibold">{user.name}</p>
+              <p className="text-xs text-zinc-400">{user.email}</p>
+            </div>
+          </div>
+        )}
+        
+      </div>
 
       <h1 className="text-4xl font-bold text-red-500 mb-10">
         Explore Problems
@@ -88,7 +145,7 @@ export default function ExploreProblems() {
             </span>
 
             <button
-              onClick={() => navigate(`/practice/${problem._id}`)}
+              onClick={() => navigate(`/problem/${problem._id}`)}
               className="bg-red-600 px-4 py-1 rounded-lg hover:bg-red-700"
             >
               Solve

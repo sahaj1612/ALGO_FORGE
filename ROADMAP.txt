@@ -1,360 +1,287 @@
-PROJECT GOAL : You are building a Code Evaluation Platform where thousands of users can 
-submit programs and the system safely compiles, executes, scores, ranks, and analyzes them.
+===============================
+🚀 ALGOFORGE FINAL MASTER ROADMAP
+(Production Level Coding Platform)
+===============================
+
+
+🎯 PROJECT GOAL
+Build a scalable LeetCode / Codeforces like platform where:
+• Thousands of users submit code
+• System compiles + runs safely
+• Judge validates outputs
+• Scores + ranks users
+• Supports contests + analytics
+• Demonstrates real backend engineering
+
+
+====================================================
+🏗️ PHASE 1 — BASIC EXECUTION PLATFORM (FOUNDATION)
+====================================================
+
+Architecture Flow:
+
+Frontend (React + Monaco)
+        ↓
+Backend (Node + Express)
+        ↓
+Docker Sandbox
+        ↓
+Run Code
+        ↓
+Return Output
+
+Tasks:
+
+✅ Build Problem Solving UI
+✅ Monaco Editor integration
+✅ Run Button → execute code in Docker
+✅ Custom input support
+✅ Output console
+✅ Static problem page
+
+Goal:
+User can RUN code successfully inside sandbox.
+
+
+====================================================
+🧠 PHASE 2 — DATABASE + PROBLEM SYSTEM
+====================================================
+
+Add MongoDB.
+
+Create Collections:
 
-This demonstrates:
+• Users
+• Problems
+• Submissions
 
-distributed processing
+Problem Model should include:
+- title
+- difficulty
+- constraints
+- tags
+- visible testcases
+- hidden testcases
+- time limit
+- memory limit
+- starter code
+- editorial
 
-queue systems
+Features:
+
+✅ Dynamic problem loading
+✅ Pagination
+✅ Filtering by difficulty / tags
+✅ Problem caching (later via Redis)
 
-sandbox execution
 
-caching
+====================================================
+⚙️ PHASE 3 — SUBMISSION PIPELINE (CORE ENGINE)
+====================================================
 
-database modeling
+New Architecture:
 
-concurrency
+Client
+   ↓
+API Server
+   ↓
+MongoDB (store submission)
+   ↓
+Redis Queue (BullMQ)
+   ↓
+Worker Service
+   ↓
+Docker Sandbox
+   ↓
+Judge Engine
+   ↓
+Result Saved
+   ↓
+Frontend polls result
 
-scalability
+Tasks:
 
-FAANG wants to see backend engineering thinking — not tutorial CRUD apps.
+• Create Submission Model
+• Status = QUEUED / RUNNING / ACCEPTED / WA / TLE / RE
+• Push submission job to queue
+• Worker picks job
+• Run docker for EACH testcase
+• Compare output
+• Generate verdict
+• Save runtime + memory
 
----
 
-WHAT FAANG WANTS TO SEE
+====================================================
+🔥 PHASE 4 — DISTRIBUTED WORKER SYSTEM
+====================================================
 
-Authentication & Authorization (JWT + refresh tokens)
+Separate Worker Service (Important)
 
-System design thinking (scalable architecture)
+Features:
 
-Database design (indexes, relations, optimization)
+• Multiple workers (horizontal scaling)
+• Retry failed jobs
+• Dead letter queue
+• Priority queue (contest > practice)
+• Concurrency control
 
-Caching
+Goal:
+Platform can handle heavy traffic.
 
-Background jobs
 
-Rate limiting
+====================================================
+🌐 PHASE 5 — MULTI LANGUAGE EXECUTION
+====================================================
 
-Security
+Create Docker images:
 
-Clean architecture
+• JS Runner
+• C++ Runner
+• Java Runner
+• Python Runner
 
-Performance handling
+Worker selects image based on language.
 
-Edge cases
+Add:
 
----
+• Compile error detection
+• Runtime error detection
+• Infinite loop timeout kill
+• Memory limit kill
 
-CORE PROJECT IDEA
 
-"LeetCode / Codeforces Like Coding Platform"
+====================================================
+🏆 PHASE 6 — CONTEST MODE
+====================================================
 
-This is NOT a UI project.
-This is a SYSTEM DESIGN project.
+Features:
 
----
+• Scheduled contest start
+• Participation tracking
+• Frozen leaderboard (last 30 mins)
+• Penalty scoring
+• Rejudge functionality
 
-HIGH LEVEL SYSTEM ARCHITECTURE
+Leaderboard logic:
 
-Client → API → Database → Queue → Worker → Sandbox → Result → Cache → Client
+• Redis Sorted Sets
+• Instant rank update
+• Tie breaking rules
+• Rating calculation (Codeforces style)
 
----
 
-DATABASE COLLECTIONS
+====================================================
+⚡ PHASE 7 — CACHING LAYER
+====================================================
 
-Users
-Problems
-Submissions
-Contests
-Participation
-Leaderboard
+Use Redis for:
 
-Use:
+• Problem details caching
+• Leaderboard caching
+• Submission polling cache
+• User stats caching
 
-indexing
+Implement:
 
-pagination
+• Cache invalidation strategy
+• Expiry policies
 
-aggregation pipelines
 
----
+====================================================
+🔐 PHASE 8 — SECURITY ENGINEERING
+====================================================
 
-FEATURE SET (FINAL TARGET)
+Production Authentication:
 
-1. SECURE AUTHENTICATION SYSTEM
+• JWT access token (15 min)
+• Refresh token (7 days)
+• Refresh rotation
+• Multiple device sessions
+• Logout all devices
+• Email verification
+• Password reset token
 
+Protection Systems:
 
-Access token (15 min)
+• Rate limiting (IP + user)
+• Spam submission prevention
+• Brute force login protection
+• API abuse protection
+• Read-only docker filesystem
+• No internet in containers
 
-Refresh token (7 days)
 
-Refresh token rotation
-
-Multiple device sessions
-
-Logout from all devices
-
-Password reset via email token
-
-Email verification
-
-Account lock after brute force (Shows security engineering)
-
----
-
-2. PROBLEM SERVICE Each problem contains:
-
-title
-
-difficulty
-
-constraints
-
-tags
-
-hidden test cases
-
-visible test cases
-
-time limit
-
-memory limit
-
-editorial
-
-
-Advanced:
-
-versioning
-
-hints unlocking
-
-company tags
-
-
-(Shows DB design skills)
-
----
-
-3. SUBMISSION PIPELINE (CORE PART)
-
-Client ↓ API Server ↓ MongoDB (store submission) ↓ Redis Queue ↓ Judge Worker ↓ Docker Sandbox Execution ↓ Result Stored
-
-Must support:
-
-C++ / Java / Python
-
-compile error detection
-
-runtime error detection
-
-timeout detection
-
-infinite loop kill
-
-hidden test cases
-
----
-
-4. WORKER SYSTEM (DISTRIBUTED PROCESSING)
-
-Separate worker service (not inside Express)
-
-multiple workers
-
-retry failed jobs
-
-priority queue (contest > practice)
-
-dead letter queue
-
----
-
-5. CONTEST MODE
-
-
-scheduled contest start
-
-frozen leaderboard last 30 min
-
-penalty scoring
-
-rejudge submissions
-
-participation tracking
-
-
-
----
-
-6. REAL TIME LEADERBOARD
-
-
-
-Use Redis Sorted Sets
-
-instant rank update
-
-tie breaking
-
-periodic recomputation
-
-rating update (Codeforces style)
-
-
-
----
-
-7. CACHING LAYER
-
-
-
-Cache using Redis:
-
-problem details
-
-leaderboard
-
-user stats
-
-submission polling
-
-
-Implement cache invalidation.
-
-
----
-
-8. RATE LIMITING & ABUSE PROTECTION
-
-
-
-spam submission prevention
-
-brute force login protection
-
-API abuse protection
-
-IP based limits
-
-user based limits
-
-exponential backoff
-
-
-
----
-
-9. ANALYTICS SYSTEM
-
-
+====================================================
+📊 PHASE 9 — ANALYTICS + SMART FEATURES
+====================================================
 
 Track:
 
-acceptance rate
-
-most failed test case
-
-difficulty prediction
-
-user progress graph
-
-topic weakness detection
-
+• Acceptance rate
+• Most failed testcase
+• Topic weakness detection
+• User progress graph
+• Difficulty prediction
 
 Use MongoDB aggregation pipelines.
 
 
----
+====================================================
+🔔 PHASE 10 — BACKGROUND JOB SYSTEM
+====================================================
 
-10. NOTIFICATION SYSTEM
+Queue based jobs:
 
-
-
-Notify user when:
-
-contest starts
-
-submission judged
-
-rank changes
-
-
-Use background job queue.
+• Notify submission judged
+• Notify contest start
+• Rank change notifications
+• Recalculate rankings
+• Clean temp containers
+• Expire contests
 
 
----
+====================================================
+☁️ PHASE 11 — SCALING + DEPLOYMENT
+====================================================
 
-BACKGROUND JOBS
+Deployment Stack:
 
-recalculate rankings
+• Docker Compose (initial)
+• Nginx reverse proxy
+• AWS / Railway / Render
 
-expire contests
+Future Scaling:
 
-clean temporary submissions
-
-
-
----
-
-CODE EXECUTION ENGINE FLOW
-
-User submits code → API stores submission → pushed to Redis queue → worker picks job → code runs inside Docker sandbox → output compared → result saved
-
-
----
-
-DETAILED FLOWS
-
-AUTHENTICATION FLOW User → Login → API validates → generate tokens → store session → authenticated
-If expired → Refresh API → new access token
-
-FETCH PROBLEM FLOW Frontend requests → check Redis → if not → MongoDB → cache → return
-
-SUBMISSION FLOW User submits → store QUEUED → push to queue → return "Running"
-
-WORKER FLOW Worker pulls job → compile → run test cases → compare output → store result
-
-RESULT FLOW Worker updates status → invalidate cache → update leaderboard
-
-USER RESULT FLOW Frontend polls /submission/:id → latest verdict
-
-LEADERBOARD FLOW Accepted → update score → Redis ranking → DB persistence
+• Kubernetes cluster
+• Multiple worker replicas
+• Load balancer
+• Distributed Redis
+• Microservice architecture
 
 
----
+====================================================
+📅 SUGGESTED 6 MONTH PLAN
+====================================================
 
-TECH STACK
-
-BACKEND Node.js + Express MongoDB Redis BullMQ Docker sandbox JWT auth
-
-FRONTEND Minimal React UI
-
-DEPLOYMENT AWS / Render / Railway Nginx Docker Compose
-
-
----
-
-6 MONTH ROADMAP
-
-MONTH 1 Node + Express clean architecture Production grade Auth system
-
-MONTH 2 Problems + submissions + DB design
-
-MONTH 3 Judge worker + queue + docker execution
-
-MONTH 4 Contest + leaderboard + caching
-
-MONTH 5 Security + rate limiting + edge cases
-
-MONTH 6 Polish + deploy + documentation + resume wording
+Month 1 → Auth + Clean Backend Architecture
+Month 2 → Problem Service + Database Design
+Month 3 → Queue + Worker + Judge Engine
+Month 4 → Contest + Leaderboard + Caching
+Month 5 → Security + Rate Limiting + Edge Cases
+Month 6 → Deployment + Documentation + Resume
 
 
----
+===============================
+🔥 FINAL RESULT
+===============================
 
-END OF ROADMAP
+You will have built:
 
+• Distributed system
+• Queue based architecture
+• Secure sandbox execution engine
+• Real time ranking engine
+• Production authentication
+• Scalable backend
 
----
-
-If you want, I can next create a daily study plan (what to learn each day) so you never feel stuck during the 6 months.
+This is a STRONG FAANG level backend project.
