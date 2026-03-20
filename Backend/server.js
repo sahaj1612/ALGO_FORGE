@@ -101,6 +101,9 @@ app.use("/api/submit", submitRoute);
 
 app.use("/api/problems", problemRoutes);
 
+const submissionRoutes = require("./routes/submissionRoutes");
+app.use("/api/submission", submissionRoutes);
+
 app.get('/', (req, res) => {
   res.send("AlgoForge Backend Running 🚀")
 })

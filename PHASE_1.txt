@@ -3,6 +3,11 @@ ONLINE JUDGE SCALABLE ARCHITECTURE
 (Using Redis + Queue + Worker)
 ===============================
 
+docker start redis
+nodemon server.js
+node workers/judgeWorker.js
+npm run dev
+
 
 1) WHAT IS REDIS?
 
@@ -36,7 +41,6 @@ Problems:
 • Cannot scale
 • Timeouts happen
 • Bad user experience
-
 
 --------------------------------
 3) REAL ONLINE JUDGE FLOW
@@ -163,8 +167,28 @@ User clicks Submit
 • Real product architecture
 • Strong resume project
 
+Current system ❌
+User clicks Submit → server waits → runs code → sends result
+👉 Bad for production (blocking, slow, crashes under load)
+
+Production system ✅
+User clicks Submit → job stored in queue → worker judges → result saved → frontend polls
 
 =================================
 THIS IS HOW LEETCODE / HACKERRANK
 SYSTEM DESIGN WORKS INTERNALLY
 =================================
+
+Frontend
+   ↓
+Express Submit API
+   ↓
+MongoDB → save pending submission
+   ↓
+Redis Queue
+   ↓
+Judge Worker (Docker execution)
+   ↓
+MongoDB update verdict
+   ↓
+Frontend polling

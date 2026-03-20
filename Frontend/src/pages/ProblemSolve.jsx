@@ -135,6 +135,62 @@ export default function ProblemSolve() {
     setOutput(data.result);
   };
 
+// ===============================================
+
+const pollVerdict = (submissionId) => {
+
+  const interval = setInterval(async () => {
+
+    const res = await fetch(
+      `http://localhost:5000/api/submission/${submissionId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      }
+    );
+
+    const data = await res.json();
+
+    setVerdict(data.status);
+
+    if (data.status !== "pending" && data.status !== "running") {
+      clearInterval(interval);
+    }
+
+  }, 2000);
+
+};
+
+//   const submitCode = async () => {
+
+//   if (!code || code.trim() === STARTER.trim()) {
+//     setOutput("❗ Please write your solution before submitting");
+//     return;
+//   }
+
+//   const token = localStorage.getItem("token");
+
+//   const res = await fetch("http://localhost:5000/api/submit", {
+//     method: "POST",
+//     headers: {
+//       "Content-Type": "application/json",
+//       Authorization: `Bearer ${token}`
+//     },
+//     body: JSON.stringify({
+//       code,
+//       problemId: id
+//     })
+//   });
+
+//   const data = await res.json();
+
+//   setVerdict(data.verdict);
+//   setOutput(data.results);   // ⭐ CORRECT
+// };
+
+
+
   const submitCode = async () => {
 
   if (!code || code.trim() === STARTER.trim()) {
@@ -142,24 +198,27 @@ export default function ProblemSolve() {
     return;
   }
 
-  const token = localStorage.getItem("token");
+  setVerdict("pending");
+  setOutput("");
 
-  const res = await fetch("http://localhost:5000/api/submit", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      code,
-      problemId: id
-    })
-  });
+  const res = await fetch(
+    "http://localhost:5000/api/submit",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      },
+      body: JSON.stringify({
+        code,
+        problemId: id   // ⭐ VERY IMPORTANT FIX
+      })
+    }
+  );
 
   const data = await res.json();
 
-  setVerdict(data.verdict);
-  setOutput(data.results);   // ⭐ CORRECT
+  pollVerdict(data.submissionId);
 };
 
   if (!problem) {
@@ -169,7 +228,6 @@ export default function ProblemSolve() {
     </div>
   );
 }
-
 
   return (
     <div className="bg-black text-white h-screen overflow-hidden">
@@ -290,16 +348,25 @@ export default function ProblemSolve() {
             </div>
 
             {verdict && (
-              <div className={`p-2 text-center font-bold 
-                ${verdict === "Accepted"
-                  ? "text-green-400"
-                  : "text-red-400"}`}>
+              <div
+                className={`p-2 text-center font-bold text-lg
+                  ${verdict === "ACCEPTED"
+                    ? "text-green-400"
+                    : verdict === "pending" || verdict === "running"
+                    ? "text-yellow-400"
+                    : "text-red-400"
+                  }`}
+              >
                 {verdict}
               </div>
             )}
 
             {/* OUTPUT */}
             <div className="flex-1 p-3 overflow-auto text-green-400 font-mono">
+
+              {/* <div className="text-green-400">
+                Verdict: {verdict}
+              </div> */}
 
               {Array.isArray(output) ? (
 
@@ -321,7 +388,7 @@ export default function ProblemSolve() {
 
               ) : (
 
-                output || "Output :"
+                output || "" //"Output :"
 
               )}
 
