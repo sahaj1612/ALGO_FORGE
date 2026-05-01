@@ -2,7 +2,7 @@
 
 AlgoForge is a coding practice platform focused on solving algorithm and data structure problems through a dedicated frontend and backend setup.
 
-> Status: This project is currently under process and still being actively built.
+> Status: This project is still in making and is being actively built. Features, structure, and documentation may continue to change.
 
 ## Tech Stack
 
