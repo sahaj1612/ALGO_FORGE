@@ -1,112 +1,114 @@
-const express = require('express')
-const passport = require('passport')
-const GoogleStrategy = require('passport-google-oauth20').Strategy
-const mongoose = require('mongoose')
-const jwt = require('jsonwebtoken')
-const cors = require('cors')
-require('dotenv').config()
+const config = require('./config/env');
+const express = require('express');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const cors = require('cors');
 
-const User = require('./models/User')
-const userRoutes = require('./routes/userRoutes')
-const problemRoutes = require('./routes/problemRoutes')
-const authMiddleware = require("./middleware/authMiddleware")
+const User = require('./models/User');
+const { apiRouter, healthRoutes } = require('./routes/index');
+const requestIdMiddleware = require('./middleware/requestId');
+const errorHandler = require('./middleware/errorHandler');
+const logger = require('./utils/logger');
 
-const app = express()
+const app = express();
 
-app.use(express.json())
+// 1. Correlation ID
+app.use(requestIdMiddleware);
 
-app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true
-}))
+// 2. Body Parser & Security Limits
+app.use(express.json({ limit: config.bodyLimit }));
+app.use(cors({ origin: config.clientUrl, credentials: true }));
+app.use(passport.initialize());
 
-app.use(passport.initialize())
+// 3. Request Logging (Structured JSON, sanitizing passwords/tokens/code)
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    logger.info(`${req.method} ${req.originalUrl} ${res.statusCode}`, {
+      correlationId: req.id,
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: res.statusCode,
+      durationMs: Date.now() - start
+    });
+  });
+  next();
+});
 
-mongoose.connect("mongodb://127.0.0.1:27017/algoforge")
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err))
+// 4. Database Connection
+mongoose.connect(config.mongodbUri)
+  .then(() => logger.info('MongoDB connected'))
+  .catch(error => {
+    logger.error(`MongoDB connection failed: ${error.message}`);
+    process.exit(1);
+  });
 
-// GOOGLE STRATEGY
-passport.use(new GoogleStrategy({
-    clientID: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-    callbackURL: "/auth/google/callback"
-},
-async (accessToken, refreshToken, profile, done) => {
+// 5. Google OAuth
+if (config.isGoogleConfigured) {
+  passport.use(new GoogleStrategy({
+    clientID: config.googleClientId,
+    clientSecret: config.googleClientSecret,
+    callbackURL: '/auth/google/callback'
+  }, async (_, __, profile, done) => {
     try {
-        let user = await User.findOne({ googleId: profile.id })
-
-        if (!user) {
-            user = await User.create({
-                googleId: profile.id,
-                name: profile.displayName,
-                email: profile.emails[0].value,
-                picture: profile.photos[0].value
-            })
-        }
-
-        return done(null, user)
+      const user = await User.findOneAndUpdate(
+        { googleId: profile.id },
+        {
+          googleId: profile.id,
+          name: profile.displayName,
+          email: profile.emails?.[0]?.value,
+          picture: profile.photos?.[0]?.value
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+      done(null, user);
     } catch (error) {
-        return done(error, null)
+      done(error);
     }
+  }));
 }
-))
 
-// DOCKER
+app.get('/auth/google', (req, res, next) =>
+  config.isGoogleConfigured
+    ? passport.authenticate('google', { scope: ['profile', 'email'], prompt: 'select_account' })(req, res, next)
+    : res.status(503).json({ message: 'Google OAuth is not configured.' })
+);
 
-const executeRoute = require("./routes/executeRoute");
+app.get('/auth/google/callback', (req, res, next) =>
+  config.isGoogleConfigured
+    ? passport.authenticate('google', { session: false })(req, res, () =>
+        res.redirect(`${config.clientUrl}/dashboard?token=${jwt.sign({ id: req.user._id }, config.jwtSecret, { expiresIn: '7d' })}`)
+      )
+    : res.status(503).json({ message: 'Google OAuth is not configured.' })
+);
 
-app.use("/api/execute", executeRoute);
+// 6. Health Check Endpoints (/health, /health/live, /health/ready)
+app.use('/health', healthRoutes);
 
+// 7. API Routes (mounted on /api and /api/v1)
+app.use('/api', apiRouter);
 
-// LOGIN ROUTE
-app.get('/auth/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
-)
+// 8. 404 Handler for undefined routes
+app.use((req, res, next) => {
+  res.status(404).json({
+    error: {
+      code: 'NOT_FOUND',
+      message: `Cannot ${req.method} ${req.originalUrl}`
+    },
+    message: `Cannot ${req.method} ${req.originalUrl}`,
+    requestId: req.id
+  });
+});
 
-// CALLBACK ROUTE (ONLY ONE)
-app.get('/auth/google/callback',
-  passport.authenticate('google', { session: false }),
-  (req, res) => {
+// 9. Unified Typed Error Handler
+app.use(errorHandler);
 
-    const token = jwt.sign(
-      { id: req.user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    )
+if (require.main === module) {
+  app.listen(config.port, () => {
+    logger.info(`Server running on port ${config.port}`);
+  });
+}
 
-    res.redirect(`http://localhost:5173/dashboard?token=${token}`)
-  }
-)
-
-// PROTECTED PROFILE ROUTE
-app.get('/api/profile', authMiddleware, async (req, res) => {
-  const user = await User.findById(req.user.id)
-  res.json(user)
-})
-
-// MONGODB CONNECTION
-// const submitRoute = require("./routes/submitRoute");
-// app.use("/api/submit", submitRoute);
-
-
-app.use('/api', userRoutes)
-app.use('/api/problems', problemRoutes)
-
-const runRoute = require("./routes/runRoute");
-const submitRoute = require("./routes/submitRoute");
-
-app.use("/api/run", runRoute);
-app.use("/api/submit", submitRoute);
-
-app.use("/api/problems", problemRoutes);
-
-const submissionRoutes = require("./routes/submissionRoutes");
-app.use("/api/submission", submissionRoutes);
-
-app.get('/', (req, res) => {
-  res.send("AlgoForge Backend Running 🚀")
-})
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log("Server running"));
+module.exports = app;

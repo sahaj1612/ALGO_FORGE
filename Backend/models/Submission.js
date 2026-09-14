@@ -1,44 +1,22 @@
-// const mongoose = require("mongoose");
-
-// const submissionSchema = new mongoose.Schema({
-
-//   userId: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: "User"
-//   },
-
-//   problemId: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: "Problem"
-//   },
-
-//   code: String,
-
-//   language: {
-//     type: String,
-//     default: "javascript"
-//   },
-
-//   status: String,
-
-//   runtime: Number,
-//   memory: Number
-
-// }, { timestamps: true });
-
-// module.exports = mongoose.model("Submission", submissionSchema);
-
 const mongoose = require("mongoose");
 
 const testcaseResultSchema = new mongoose.Schema({
-  input: String,
-  expected: String,
-  got: String,
-  status: String
+  ordinal: { type: Number, required: true },
+  status: {
+    type: String,
+    enum: ["passed", "wrong_answer", "time_limit", "runtime_error", "compilation_error", "error"],
+    required: true
+  },
+  time: { type: Number, default: 0 }, // in ms
+  memory: { type: Number, default: null },
+  error: { type: String, default: null },
+  // input/expected/got are present ONLY when safe (public run cases)
+  input: { type: String, default: undefined },
+  expected: { type: String, default: undefined },
+  got: { type: String, default: undefined }
 }, { _id: false });
 
 const submissionSchema = new mongoose.Schema({
-
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -51,6 +29,11 @@ const submissionSchema = new mongoose.Schema({
     required: true
   },
 
+  problemVersion: {
+    type: Number,
+    default: 1
+  },
+
   code: {
     type: String,
     required: true
@@ -58,6 +41,7 @@ const submissionSchema = new mongoose.Schema({
 
   language: {
     type: String,
+    enum: ["javascript", "python", "java", "cpp", "c"],
     default: "javascript"
   },
 
@@ -69,22 +53,25 @@ const submissionSchema = new mongoose.Schema({
       "running",
       "accepted",
       "wrong_answer",
-      "tle",
-      "re",
+      "time_limit",
+      "runtime_error",
+      "compilation_error",
       "server_error"
     ]
   },
 
-  results: [testcaseResultSchema],   // ⭐ VERY IMPORTANT
+  results: [testcaseResultSchema],
 
   output: String,
-
   error: String,
-
   time: Number,
-
   memory: Number
 
 }, { timestamps: true });
+
+// Required compound indexes
+submissionSchema.index({ userId: 1, createdAt: -1 });
+submissionSchema.index({ problemId: 1, createdAt: -1 });
+submissionSchema.index({ status: 1, createdAt: 1 });
 
 module.exports = mongoose.model("Submission", submissionSchema);

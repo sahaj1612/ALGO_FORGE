@@ -5,25 +5,40 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node tests/runAllTests.js",
+    "test:unit": "node tests/runAllTests.js unit",
+    "test:integration": "node tests/runAllTests.js integration",
+    "test:worker": "node tests/runAllTests.js worker",
+    "test:e2e": "node tests/runAllTests.js e2e",
+    "test:fixtures": "node tests/runAllTests.js fixtures",
+    "seed": "node scripts/seedProblems.js",
+    "migrate": "node scripts/migrate.js"
   },
   "nodemonConfig": {
     "ignore": [
-      "sandbox/*"
+      "sandbox/*",
+      "tests/*"
     ]
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sahaj1612/ALGO_FORGE.git"
   },
-  "keywords": [],
+  "keywords": [
+    "algorithms",
+    "data-structures",
+    "online-judge",
+    "react",
+    "express",
+    "mongodb"
+  ],
   "author": "Sahaj",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/sahaj1612/ALGO_FORGE/issues"
   },
   "homepage": "https://github.com/sahaj1612/ALGO_FORGE#readme",
-  "description": "",
+  "description": "A full-stack algorithm practice platform with isolated code execution and progress tracking.",
   "dependencies": {
     "bullmq": "^5.71.0",
     "cors": "^2.8.6",
@@ -33,6 +48,7 @@
     "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.1",
+    "nodemon": "^3.1.14",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0"
   }

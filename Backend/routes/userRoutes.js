@@ -1,11 +1,19 @@
-const express = require('express')
-const router = express.Router()
-const authMiddleware = require('../middleware/authMiddleware')
-const User = require('../models/User')
+const express = require('express');
+const router = express.Router();
+const auth = require('../middleware/authMiddleware');
+const userController = require('../controllers/userController');
+const authController = require('../controllers/authController');
 
-router.get('/profile', authMiddleware, async (req, res) => {
-  const user = await User.findById(req.user.id)
-  res.json(user)
-})
+// User Stats / Leaderboard
+router.get('/user/stats', userController.getStats);
 
-module.exports = router
+// Auth Routes (kept on /api for backward compatibility)
+router.post('/auth/register', authController.register);
+router.post('/auth/login', authController.login);
+
+// Profile Management
+router.get('/profile', auth, userController.getProfile);
+router.put('/profile', auth, userController.updateProfile);
+router.put('/profile/picture', auth, userController.updatePicture);
+
+module.exports = router;

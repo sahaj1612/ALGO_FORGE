@@ -1,0 +1,101 @@
+====================================================================
+PHASE 6 — MAANG-LEVEL PORTFOLIO BAR AND PRODUCT POLISH
+====================================================================
+
+What “sufficient for MAANG” means here
+--------------------------------------
+No project guarantees an interview, and a small team should not pretend to run
+LeetCode-scale infrastructure. A MAANG-calibre portfolio project demonstrates
+sound tradeoffs, secure systems thinking, measurable quality, ownership and
+clear communication. This final phase packages the preceding work as evidence.
+
+Capstone product capabilities
+-----------------------------
+* A curated, versioned problem catalogue with robust multi-language judging.
+* Learning loop: personalized recommendations, spaced review/reminders, notes,
+  bookmarks, solution/editorial release after solve, and progress analytics.
+* Author/admin workflow: draft, review, preview, publish, version, retire and
+  audit. Include testcase validation and an approval gate.
+* Community only after moderation/abuse controls are real: discussion reports,
+  spoiler controls and rate limits. It is preferable to omit social features
+  than ship an unmoderated attack surface.
+* Accessibility and internationalization foundations: semantic controls,
+  keyboard editor/navigation path, contrast, focus states, mobile layout and
+  performance budgets.
+
+User learning flow
+------------------
+
+ [sign in] --> [dashboard: goals, recent work, weak topics]
+                        |
+                        v
+            [recommended or filtered problem]
+                        |
+             +----------+----------+
+             |                     |
+             v                     v
+       [read contract]      [review prior problem]
+             |                     |
+             v                     |
+     [write + Run public cases] ---+
+             |
+             v
+          [Submit]
+             |
+       +-----+-------------------------------+
+       | accepted                            | non-accepted
+       v                                     v
+ [update skills/streak, unlock]  [specific verdict + safe diagnostics]
+       |                                     |
+       v                                     v
+ [editorial/next recommendation]    [iterate or save for review]
+
+Portfolio evidence to publish
+-----------------------------
+1. A concise architecture document explaining API, queue, worker, sandbox,
+   storage and failure modes. Include an honest diagram and why Redis/BullMQ
+   was chosen over alternatives.
+2. An ADR folder recording meaningful decisions: async judging, execution
+   isolation, adapter contracts, data model/indexes, polling versus SSE, and
+   chosen deployment model. Explain tradeoffs and rejected options.
+3. A public demo environment with synthetic seed data, health endpoint and a
+   video/GIF showing submit-to-verdict. Never expose production credentials or
+   hidden tests.
+4. A README that includes local quickstart, environment variables, architecture,
+   screenshots, supported languages, test commands, security boundaries and
+   known limitations.
+5. Engineering evidence: CI badge, coverage summary, benchmark/load-test
+   methodology and results, accessibility audit, threat model, SLO dashboard
+   screenshot and incident/recovery runbook.
+6. A short resume bullet using real measured values, for example: “Built a
+   full-stack online judge with asynchronous queued evaluation and isolated
+   multi-language runners; validated N submissions/minute at p95 queue wait of
+   X seconds.” Replace N/X only with measured results.
+
+Final interview narrative
+-------------------------
+Problem -> API creates durable pending submission -> queue decouples user
+latency from execution -> worker snapshots/versioned problem and asks isolated
+executor to run resource-limited code -> worker records an auditable terminal
+verdict -> UI receives the result -> metrics/alerts reveal saturation/failure.
+
+Be ready to explain:
+* why synchronous Docker execution fails under concurrent traffic;
+* how jobs are retried without incorrect duplicate finalization;
+* how runner isolation, limits and rate limits mitigate untrusted code;
+* why hidden tests/versioning/pagination protect correctness and scale;
+* what metric triggered capacity changes and how you would handle a failed
+  worker, Redis outage or sandbox escape report.
+
+Final release checklist
+-----------------------
+* All Phase 2–5 acceptance criteria are verified and linked from the README.
+* Security review and restore/load drills are complete; known limitations are
+  documented instead of concealed.
+* Production dashboards, alerts and on-call runbooks have an owner.
+* Demo account/data is safe, the deployment is reproducible, and the project
+  can be explained end-to-end in five minutes with concrete metrics.
+
+At this point, keep improving based on real user feedback and measured service
+behavior—not by adding features solely to make the repository look larger.
+

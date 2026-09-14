@@ -1,2 +1,10 @@
-node_modules
+node_modules/
+dist/
+*.log
 .env
+.env.*
+!.env.example
+Backend/sandbox/code.js
+Backend/sandbox/input.txt
+Backend/sandbox/temp.js
+Backend/sandbox/runs/

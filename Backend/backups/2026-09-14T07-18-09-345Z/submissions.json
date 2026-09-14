@@ -1,0 +1,946 @@
+[
+  {
+    "_id": "6aa6cb5dc2e9d7c0730fdd88",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "69bd041c0669b885ce198b33",
+    "code": "class Solution {\n    public int solve(int[] nums) {\n        return 0;\n    }\n}",
+    "language": "java",
+    "status": "wrong_answer",
+    "results": [
+      {
+        "input": "[100,2,300]",
+        "expected": "300",
+        "got": "0",
+        "status": "wrong_answer"
+      }
+    ],
+    "createdAt": "2026-09-13T16:12:13.122Z",
+    "updatedAt": "2026-09-13T16:12:16.433Z",
+    "__v": 1,
+    "memory": null,
+    "output": "0",
+    "time": 3210
+  },
+  {
+    "_id": "6aa6cb61c2e9d7c0730fdd96",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "69bd041c0669b885ce198b33",
+    "code": "class Solution {\n    public int solve(int[] nums) {\n        int m = nums[0];\n        for (int x : nums) if (x > m) m = x;\n        return m;\n    }\n}",
+    "language": "java",
+    "status": "accepted",
+    "results": [
+      {
+        "input": "[100,2,300]",
+        "expected": "300",
+        "got": "300",
+        "status": "passed"
+      },
+      {
+        "input": "[-1,-9,-3]",
+        "expected": "-1",
+        "got": "-1",
+        "status": "passed"
+      },
+      {
+        "input": "[4,7,3,11,6]",
+        "expected": "11",
+        "got": "11",
+        "status": "passed"
+      }
+    ],
+    "createdAt": "2026-09-13T16:12:17.314Z",
+    "updatedAt": "2026-09-13T16:12:27.373Z",
+    "__v": 1,
+    "memory": null,
+    "output": "11",
+    "time": 3764
+  },
+  {
+    "_id": "6aa6cbabc1c807b87c8f5266",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "69bd041c0669b885ce198b33",
+    "code": "import java.util.*;\n\npublic class Solution {\n    public int solve(int[] nums) {\n        int maxVal = nums[0];\n        for (int num : nums) {\n            if (num > maxVal) {\n                maxVal = num;\n            }\n        }\n        return maxVal;\n    }\n}",
+    "language": "java",
+    "status": "accepted",
+    "results": [
+      {
+        "input": "[100,2,300]",
+        "expected": "300",
+        "got": "300",
+        "status": "passed"
+      },
+      {
+        "input": "[-1,-9,-3]",
+        "expected": "-1",
+        "got": "-1",
+        "status": "passed"
+      },
+      {
+        "input": "[4,7,3,11,6]",
+        "expected": "11",
+        "got": "11",
+        "status": "passed"
+      }
+    ],
+    "createdAt": "2026-09-13T16:13:31.294Z",
+    "updatedAt": "2026-09-13T16:13:42.519Z",
+    "__v": 1,
+    "memory": null,
+    "output": "11",
+    "time": 3809
+  },
+  {
+    "_id": "6aa6cbc2c1c807b87c8f527c",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "69bd041c0669b885ce198b33",
+    "code": "import java.util.*;\n\npublic class Solution {\n    public int solve(int[] nums) {\n        int maxVal = nums[0];\n        for (int num : nums) {\n            if (num > maxVal) {\n                maxVal = num;\n            }\n        }\n        return 0;\n    }\n}",
+    "language": "java",
+    "status": "wrong_answer",
+    "results": [
+      {
+        "input": "[100,2,300]",
+        "expected": "300",
+        "got": "0",
+        "status": "wrong_answer"
+      }
+    ],
+    "createdAt": "2026-09-13T16:13:54.959Z",
+    "updatedAt": "2026-09-13T16:13:58.490Z",
+    "__v": 1,
+    "memory": null,
+    "output": "0",
+    "time": 3504
+  },
+  {
+    "_id": "6aa6cbcdc1c807b87c8f528a",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "69bd041c0669b885ce198b33",
+    "code": "import java.util.*;\n\npublic class Solution {\n    public int solve(int[] nums) {\n        int maxVal = nums[0];\n        for (int num : nums) {\n            if (num > maxVal) {\n                maxVal = num;\n            }\n        }\n        return 300;\n    }\n}",
+    "language": "java",
+    "status": "wrong_answer",
+    "results": [
+      {
+        "input": "[100,2,300]",
+        "expected": "300",
+        "got": "300",
+        "status": "passed"
+      },
+      {
+        "input": "[-1,-9,-3]",
+        "expected": "-1",
+        "got": "300",
+        "status": "wrong_answer"
+      }
+    ],
+    "createdAt": "2026-09-13T16:14:05.246Z",
+    "updatedAt": "2026-09-13T16:14:12.544Z",
+    "__v": 1,
+    "memory": null,
+    "output": "300",
+    "time": 3674
+  },
+  {
+    "_id": "6aa6cbe9c1c807b87c8f529c",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "69bd041c0669b885ce198b33",
+    "code": "#include <iostream>\n#include <vector>\n#include <algorithm>\nusing namespace std;\n\nclass Solution {\npublic:\n    int solve(vector<int>& nums) {\n        int maxVal = nums[0];\n        for (int x : nums) {\n            if (x > maxVal) maxVal = x;\n        }\n        return 0;\n    }\n};",
+    "language": "cpp",
+    "status": "wrong_answer",
+    "results": [
+      {
+        "input": "[100,2,300]",
+        "expected": "300",
+        "got": "0",
+        "status": "wrong_answer"
+      }
+    ],
+    "createdAt": "2026-09-13T16:14:33.083Z",
+    "updatedAt": "2026-09-13T16:14:34.566Z",
+    "__v": 1,
+    "memory": null,
+    "output": "0",
+    "time": 1463
+  },
+  {
+    "_id": "6aa6d00d1454534a0f13af9b",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "69bd041c0669b885ce198b34",
+    "code": "class Solution {\n    public boolean solve(ListNode head) {\n        if (head == null || head.next == null) return false;\n        ListNode slow = head, fast = head;\n        while (fast != null && fast.next != null) {\n            slow = slow.next;\n            fast = fast.next.next;\n            if (slow == fast) return true;\n        }\n        return false;\n    }\n}",
+    "language": "java",
+    "status": "accepted",
+    "results": [
+      {
+        "input": "{\"nums\":[],\"pos\":-1}",
+        "expected": "false",
+        "got": "false",
+        "status": "passed"
+      },
+      {
+        "input": "{\"nums\":[1,3,5,7,9],\"pos\":2}",
+        "expected": "true",
+        "got": "true",
+        "status": "passed"
+      },
+      {
+        "input": "{\"nums\":[5,4,3,2,1],\"pos\":-1}",
+        "expected": "false",
+        "got": "false",
+        "status": "passed"
+      }
+    ],
+    "createdAt": "2026-09-13T16:32:13.999Z",
+    "updatedAt": "2026-09-13T16:32:25.225Z",
+    "__v": 1,
+    "memory": null,
+    "output": "false",
+    "time": 3944
+  },
+  {
+    "_id": "6aa6d6db5d6f3e2d05cdb556",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "6aa6cdc6542c8257d22a1f35",
+    "code": "import java.util.*;\n\npublic class Solution {\n    public int[] solve(int n, int[][] edges, int start) {\n        int[] dist = new int[n];\n        Arrays.fill(dist, -1);\n        dist[start] = 0;\n        List<List<int[]>> adj = new ArrayList<>();\n        for (int i = 0; i < n; i++) adj.add(new ArrayList<>());\n        for (int[] e : edges) {\n            adj.get(e[0]).add(new int[]{e[1], e[2]});\n        }\n        PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingInt(a -> a[0]));\n        pq.offer(new int[]{0, start});\n        while (!pq.isEmpty()) {\n            int[] top = pq.poll();\n            int d = top[0], u = top[1];\n            if (d > dist[u]) continue;\n            for (int[] edge : adj.get(u)) {\n                int v = edge[0], w = edge[1];\n                if (dist[v] == -1 || dist[u] + w < dist[v]) {\n                    dist[v] = dist[u] + w;\n                    pq.offer(new int[]{dist[v], v});\n                }\n            }\n        }\n        return ;\n    }\n}",
+    "language": "java",
+    "status": "compilation_error",
+    "results": [
+      {
+        "input": "[1]",
+        "expected": "1",
+        "got": "",
+        "status": "compilation_error"
+      }
+    ],
+    "createdAt": "2026-09-13T17:01:15.950Z",
+    "updatedAt": "2026-09-13T17:01:19.983Z",
+    "__v": 1,
+    "error": "/workspace/Solution.java:30: error: incompatible types: missing return value\n        return ;\n        ^\n/workspace/Solution.java:39: error: method solve in class Solution cannot be applied to given types;\n        System.out.println(sol.solve(nums));\n                              ^\n  required: int,int[][],int\n  found:    int[]\n  reason: actual and formal argument lists differ in length\n2 errors",
+    "memory": null,
+    "output": "",
+    "time": 3984
+  },
+  {
+    "_id": "6aa792bc2edd1d0b83017867",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "compilation_error",
+    "results": [
+      {
+        "input": "{\"nums\":[3,3],\"target\":6}",
+        "expected": "[0,1]",
+        "got": "",
+        "status": "compilation_error"
+      }
+    ],
+    "createdAt": "2026-09-14T06:22:52.582Z",
+    "updatedAt": "2026-09-14T06:22:52.698Z",
+    "__v": 1,
+    "error": "Unsupported language: javascript",
+    "memory": null,
+    "output": "",
+    "time": 0
+  },
+  {
+    "_id": "6aa792e62edd1d0b8301786c",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 688,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 512,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 590,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T06:23:34.953Z",
+    "updatedAt": "2026-09-14T06:23:36.852Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 688
+  },
+  {
+    "_id": "6aa7939e4d4fa89caaf83c56",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 520,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 638,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 519,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T06:26:38.779Z",
+    "updatedAt": "2026-09-14T06:26:40.521Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 638
+  },
+  {
+    "_id": "6aa793c2a6c6ca79a6a08c8a",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 582,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 565,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 523,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T06:27:14.493Z",
+    "updatedAt": "2026-09-14T06:27:16.212Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 582
+  },
+  {
+    "_id": "6aa797caef13e83ec5a2d1fe",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 517,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 534,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 449,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T06:44:26.055Z",
+    "updatedAt": "2026-09-14T06:44:27.667Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 534
+  },
+  {
+    "_id": "6aa79aa460a1f0c178ae488a",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 707,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 878,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 807,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T06:56:36.144Z",
+    "updatedAt": "2026-09-14T06:56:38.655Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 878
+  },
+  {
+    "_id": "6aa79b91dccbb350870ddd17",
+    "userId": "6aa79b90dccbb350870ddd0f",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 531,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 629,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 503,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:00:33.921Z",
+    "updatedAt": "2026-09-14T07:00:37.294Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 629
+  },
+  {
+    "_id": "6aa79d84929c1a51f805ee9c",
+    "userId": "6aa79d84929c1a51f805ee8e",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { return [0, 1]; }",
+    "language": "javascript",
+    "status": "wrong_answer",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 572,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "wrong_answer",
+        "time": 512,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:08:52.751Z",
+    "updatedAt": "2026-09-14T07:08:53.875Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 572
+  },
+  {
+    "_id": "6aa79d95ebbb0ddd9c337b96",
+    "userId": "6aa79d95ebbb0ddd9c337b88",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { return [0, 1]; }",
+    "language": "javascript",
+    "status": "wrong_answer",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 563,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "wrong_answer",
+        "time": 475,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:09:09.998Z",
+    "updatedAt": "2026-09-14T07:09:11.081Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 563
+  },
+  {
+    "_id": "6aa79d9e83acdb800676ba17",
+    "userId": "6aa79d9e83acdb800676ba0f",
+    "problemId": "69bd041c0669b885ce198b33",
+    "problemVersion": 1,
+    "code": "function solve(nums) { return Math.max(...nums); }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 569,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 591,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 677,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:09:18.721Z",
+    "updatedAt": "2026-09-14T07:09:20.629Z",
+    "__v": 0,
+    "error": null,
+    "memory": null,
+    "time": 677
+  },
+  {
+    "_id": "6aa79da083acdb800676ba20",
+    "userId": "6aa79d9e83acdb800676ba0f",
+    "problemId": "69bd041c0669b885ce198b33",
+    "problemVersion": 1,
+    "code": "function solve(nums) { return -999; }",
+    "language": "javascript",
+    "status": "wrong_answer",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "wrong_answer",
+        "time": 563,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:09:20.648Z",
+    "updatedAt": "2026-09-14T07:09:21.235Z",
+    "__v": 0,
+    "error": null,
+    "memory": null,
+    "time": 563
+  },
+  {
+    "_id": "6aa79da183acdb800676ba27",
+    "userId": "6aa79d9e83acdb800676ba0f",
+    "problemId": "6aa79da183acdb800676ba26",
+    "problemVersion": 1,
+    "code": "function solve() {}",
+    "language": "javascript",
+    "status": "server_error",
+    "results": [],
+    "createdAt": "2026-09-14T07:09:21.243Z",
+    "updatedAt": "2026-09-14T07:09:21.261Z",
+    "__v": 0,
+    "error": "Problem no longer exists."
+  },
+  {
+    "_id": "6aa79e4bbfbbcee4806fe503",
+    "userId": "6aa79e4bbfbbcee4806fe4fb",
+    "problemId": "69bd041c0669b885ce198b33",
+    "problemVersion": 1,
+    "code": "function solve(nums) { return Math.max(...nums); }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 683,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 596,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 562,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:12:11.107Z",
+    "updatedAt": "2026-09-14T07:12:12.992Z",
+    "__v": 0,
+    "error": null,
+    "memory": null,
+    "time": 683
+  },
+  {
+    "_id": "6aa79e4dbfbbcee4806fe50c",
+    "userId": "6aa79e4bbfbbcee4806fe4fb",
+    "problemId": "69bd041c0669b885ce198b33",
+    "problemVersion": 1,
+    "code": "function solve(nums) { return -999; }",
+    "language": "javascript",
+    "status": "wrong_answer",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "wrong_answer",
+        "time": 534,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:12:13.008Z",
+    "updatedAt": "2026-09-14T07:12:13.579Z",
+    "__v": 0,
+    "error": null,
+    "memory": null,
+    "time": 534
+  },
+  {
+    "_id": "6aa79e4dbfbbcee4806fe513",
+    "userId": "6aa79e4bbfbbcee4806fe4fb",
+    "problemId": "6aa79e4dbfbbcee4806fe512",
+    "problemVersion": 1,
+    "code": "function solve() {}",
+    "language": "javascript",
+    "status": "server_error",
+    "results": [],
+    "createdAt": "2026-09-14T07:12:13.592Z",
+    "updatedAt": "2026-09-14T07:12:13.608Z",
+    "__v": 0,
+    "error": "Problem no longer exists."
+  },
+  {
+    "_id": "6aa79e5817d8a30d255afb92",
+    "userId": "6aa79e5617d8a30d255afb8a",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 500,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 460,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 483,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:12:24.002Z",
+    "updatedAt": "2026-09-14T07:12:25.474Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 500
+  },
+  {
+    "_id": "6aa79e772b16154a00dc089f",
+    "userId": "6aa79e762b16154a00dc0897",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 586,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 477,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 523,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:12:55.700Z",
+    "updatedAt": "2026-09-14T07:12:57.322Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 586
+  },
+  {
+    "_id": "6aa79eb5d1e7b8ba14925af8",
+    "userId": "6aa79eb5d1e7b8ba14925aea",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { return [0, 1]; }",
+    "language": "javascript",
+    "status": "wrong_answer",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 647,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "wrong_answer",
+        "time": 519,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:13:57.422Z",
+    "updatedAt": "2026-09-14T07:13:58.618Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 647
+  },
+  {
+    "_id": "6aa79eb88f3c48ec86999914",
+    "userId": "6aa79eb88f3c48ec8699990c",
+    "problemId": "69bd041c0669b885ce198b33",
+    "problemVersion": 1,
+    "code": "function solve(nums) { return Math.max(...nums); }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 609,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 574,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 593,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:14:00.591Z",
+    "updatedAt": "2026-09-14T07:14:02.418Z",
+    "__v": 0,
+    "error": null,
+    "memory": null,
+    "time": 609
+  },
+  {
+    "_id": "6aa79eba8f3c48ec8699991d",
+    "userId": "6aa79eb88f3c48ec8699990c",
+    "problemId": "69bd041c0669b885ce198b33",
+    "problemVersion": 1,
+    "code": "function solve(nums) { return -999; }",
+    "language": "javascript",
+    "status": "wrong_answer",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "wrong_answer",
+        "time": 583,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:14:02.435Z",
+    "updatedAt": "2026-09-14T07:14:03.058Z",
+    "__v": 0,
+    "error": null,
+    "memory": null,
+    "time": 583
+  },
+  {
+    "_id": "6aa79ebb8f3c48ec86999924",
+    "userId": "6aa79eb88f3c48ec8699990c",
+    "problemId": "6aa79ebb8f3c48ec86999923",
+    "problemVersion": 1,
+    "code": "function solve() {}",
+    "language": "javascript",
+    "status": "server_error",
+    "results": [],
+    "createdAt": "2026-09-14T07:14:03.070Z",
+    "updatedAt": "2026-09-14T07:14:03.090Z",
+    "__v": 0,
+    "error": "Problem no longer exists."
+  },
+  {
+    "_id": "6aa79ebf881fd8d5929c44a2",
+    "userId": "6aa79ebe881fd8d5929c449a",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 474,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 538,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 465,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:14:07.797Z",
+    "updatedAt": "2026-09-14T07:14:09.315Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 538
+  },
+  {
+    "_id": "6aa79ee144ef9ee9895e0618",
+    "userId": "6a958c019d369f046f6e3c8a",
+    "problemId": "6aa7925bceb31be979302201",
+    "problemVersion": 1,
+    "code": "function solve(nums, target) { const map = new Map(); for (let i = 0; i < nums.length; i++) { const diff = target - nums[i]; if (map.has(diff)) return [map.get(diff), i]; map.set(nums[i], i); } return []; }",
+    "language": "javascript",
+    "status": "accepted",
+    "results": [
+      {
+        "ordinal": 1,
+        "status": "passed",
+        "time": 499,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 2,
+        "status": "passed",
+        "time": 462,
+        "memory": null,
+        "error": null
+      },
+      {
+        "ordinal": 3,
+        "status": "passed",
+        "time": 422,
+        "memory": null,
+        "error": null
+      }
+    ],
+    "createdAt": "2026-09-14T07:14:41.106Z",
+    "updatedAt": "2026-09-14T07:14:42.528Z",
+    "__v": 1,
+    "error": null,
+    "memory": null,
+    "time": 499
+  }
+]

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import SiteHeader from "../components/SiteHeader";
 
 function Problems() {
   const [problems, setProblems] = useState([]);
@@ -12,8 +13,10 @@ function Problems() {
   }, []);
 
   return (
-    <div>
-      <h2>All Problems</h2>
+    <div className="min-h-screen bg-black text-white">
+      <SiteHeader />
+      <main className="p-8">
+      <h2 className="text-3xl font-bold text-red-500">All Problems</h2>
       {problems.map(problem => (
         <div
           key={problem._id}
@@ -24,6 +27,7 @@ function Problems() {
           <p>{problem.difficulty}</p>
         </div>
       ))}
+      </main>
     </div>
   );
 }

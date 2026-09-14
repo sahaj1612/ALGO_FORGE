@@ -1,0 +1,97 @@
+====================================================================
+PHASE 4 — SECURITY AND MULTI-TENANT TRUST BOUNDARIES
+====================================================================
+
+Purpose
+-------
+An online judge executes hostile, user-provided programs. Docker flags in the
+current worker are a useful start (no network, CPU/memory/PID limits and a
+read-only source mount), but they are not a complete isolation strategy. This
+phase establishes the boundary needed before public use.
+
+Threat model
+------------
+Attacker goals include escaping the runner, exhausting CPU/RAM/disk or queue
+capacity, accessing secrets/network/other submissions, stealing hidden tests,
+credential attacks, and abusing public endpoints. Treat every submission,
+custom input, profile upload and OAuth callback as untrusted.
+
+Security architecture flow
+--------------------------
+
+ [Browser] --TLS/JWT--> [edge/WAF + rate limits]
+                               |
+                               v
+                    [API validation + authz + audit log]
+                         |                     |
+       public run -------+                     +---- submission request
+                         |                              |
+                         v                              v
+                 [limited run queue]              [judge queue]
+                         \                              /
+                          v                            v
+                  [isolated runner pool: no secrets, no network]
+                          |
+                          v
+              [ephemeral filesystem + resource/cgroup limits]
+                          |
+                          v
+            [sanitized verdict/metrics] -> [database + user-owned result]
+
+Required controls
+-----------------
+1. Use a dedicated runner environment separate from API/worker credentials.
+   Prefer hardened microVMs or a managed sandbox (for example Firecracker/gVisor
+   behind an executor service) for internet-facing execution. If Docker remains
+   temporary, run rootless with a non-root UID, drop all capabilities, enforce
+   `no-new-privileges`, use a read-only root filesystem, tmpfs size limits,
+   seccomp/AppArmor policy and a disposable node/VM. Never mount the Docker
+   socket, host paths or cloud credentials into a runner.
+2. Enforce limits at multiple layers: per-process CPU/wall-clock/memory/PIDs,
+   output bytes, file bytes, compiler time, testcase count, concurrent jobs per
+   user, queued jobs per user, request body size and global queue depth.
+3. Add rate limits by IP and authenticated user for login, registration, Run,
+   Submit and polling. Return 429 with Retry-After. Add idempotency keys to
+   submit so network retries cannot amplify load.
+4. Validate all bodies and query parameters with an allowlist schema. Escape or
+   safely render compiler errors/source previews. Reject ambiguous language and
+   adapter contracts.
+5. Store secrets only in the runtime secret manager/CI secret store. Rotate
+   JWT/OAuth credentials, use short access tokens plus refresh-token rotation
+   (or secure httpOnly sessions), set an explicit CORS allowlist, HTTPS/HSTS and
+   secure cookie settings where applicable.
+6. Enforce role-based authorization for authoring/admin endpoints; audit every
+   publish/retire/delete action. Limit profile images to verified MIME type,
+   dimensions and storage object references—not arbitrary base64 blobs.
+7. Define retention: encrypt backups, restrict production DB access, expire raw
+   source/results according to policy, and provide account export/deletion.
+
+Incident flow
+-------------
+
+ [alert: escape signal, error spike, queue flood, auth anomaly]
+                         |
+                         v
+          [on-call verifies dashboard and correlation IDs]
+                         |
+          +-- confirmed abuse --> [rate-limit / disable affected queue]
+                         |                         |
+                         |                         v
+                         |                [quarantine runner image/node]
+                         |                         |
+                         |                         v
+                         |                 [rotate exposed credentials]
+                         |
+                         +-- false positive --> [tune threshold and document]
+                                                   |
+                                                   v
+                                      [post-incident review and test]
+
+Definition of done
+------------------
+* External security review includes sandbox escape and API authorization tests.
+* A runner compromise cannot expose database, Redis, Docker socket or secrets.
+* Load/abuse tests prove one account cannot monopolize execution capacity.
+* Security headers, authentication flows, audit logs, secret rotation and
+  dependency/image scanning are documented and verified.
+

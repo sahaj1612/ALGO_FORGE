@@ -1,0 +1,557 @@
+openapi: 3.0.3
+info:
+  title: AlgoForge Online Judge API
+  version: 1.0.0
+  description: >
+    Production-grade RESTful API for AlgoForge, an online algorithm learning and judging platform.
+    Features sandboxed polyglot code execution, asynchronous BullMQ job processing, and user analytics.
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local v1 API
+  - url: http://localhost:5000/api
+    description: Local legacy alias
+
+paths:
+  /health/live:
+    get:
+      summary: Liveness Probe
+      description: Returns 200 if the process is up and running.
+      responses:
+        '200':
+          description: Process alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  uptime:
+                    type: number
+                    example: 3600
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /health/ready:
+    get:
+      summary: Readiness Probe
+      description: Checks MongoDB and Redis connectivity before routing traffic.
+      responses:
+        '200':
+          description: Dependencies connected and ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReady'
+        '503':
+          description: One or more dependencies degraded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReady'
+
+  /auth/register:
+    post:
+      summary: User Registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  example: Alice Smith
+                email:
+                  type: string
+                  format: email
+                  example: alice@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  example: SecurePass123!
+      responses:
+        '201':
+          description: Registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Account already exists
+
+  /auth/login:
+    post:
+      summary: User Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Authenticated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /problems:
+    get:
+      summary: List Published Problems
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: Cursor ObjectId for stable pagination
+        - name: topic
+          in: query
+          schema:
+            type: string
+          description: Filter by problem topic
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+            enum: [Easy, Medium, Hard]
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search term matching title, slug, or topic
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      responses:
+        '200':
+          description: Paginated published problem list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProblemListItem'
+                  nextCursor:
+                    type: string
+                    nullable: true
+                  total:
+                    type: integer
+
+  /problems/{slug}:
+    get:
+      summary: Get Public Problem Detail
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Canonical problem slug
+      responses:
+        '200':
+          description: Problem contract and public testcases (hiddenTestcases stripped)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /run:
+    post:
+      summary: Execute Code against Public Testcases
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, problemId]
+              properties:
+                code:
+                  type: string
+                problemId:
+                  type: string
+                language:
+                  type: string
+                  enum: [javascript, python, java, cpp, c]
+                  default: javascript
+                testcases:
+                  type: array
+                  maxItems: 5
+                  description: Optional custom testcases (capped at 5 and 10KB)
+      responses:
+        '200':
+          description: Execution diagnostics and sample results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RunResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          description: Payload exceeds 10 KB limit
+
+  /submit:
+    post:
+      summary: Submit Code for Judging
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, problemId]
+              properties:
+                code:
+                  type: string
+                problemId:
+                  type: string
+                language:
+                  type: string
+                  enum: [javascript, python, java, cpp, c]
+                  default: javascript
+      responses:
+        '202':
+          description: Accepted for judging; returns poll metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /submissions/{id}:
+    get:
+      summary: Poll Submission Status
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Submission status and safe results (hidden inputs masked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionDetail'
+        '403':
+          description: Unauthorized to view this submission
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /submissions:
+    get:
+      summary: User Submission History
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: problemId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated history of current user's submissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SubmissionDetail'
+                  nextCursor:
+                    type: string
+                    nullable: true
+                  total:
+                    type: integer
+
+  /user/stats:
+    get:
+      summary: User Progress & Leaderboard Statistics
+      parameters:
+        - name: tzOffset
+          in: query
+          schema:
+            type: integer
+            description: Timezone offset in minutes for streak calculations
+      responses:
+        '200':
+          description: User solve metrics, streak, and ranking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStats'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Bad Request / Validation Failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication Required or Invalid Token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    HealthReady:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, degraded]
+        mongo:
+          type: string
+          enum: [connected, disconnected]
+        redis:
+          type: string
+          enum: [connected, disconnected]
+        timestamp:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            email:
+              type: string
+            role:
+              type: string
+              enum: [user, admin]
+
+    ProblemListItem:
+      type: object
+      properties:
+        _id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        difficulty:
+          type: string
+          enum: [Easy, Medium, Hard]
+        topic:
+          type: string
+        status:
+          type: string
+          enum: [draft, review, published, retired]
+        isSolved:
+          type: boolean
+
+    ProblemDetail:
+      type: object
+      properties:
+        _id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        difficulty:
+          type: string
+        topic:
+          type: string
+        description:
+          type: string
+        constraints:
+          type: string
+        timeLimit:
+          type: number
+        memoryLimit:
+          type: number
+        examples:
+          type: array
+          items:
+            type: object
+            properties:
+              input:
+                type: string
+              output:
+                type: string
+              explanation:
+                type: string
+        testcases:
+          type: array
+          items:
+            type: object
+            properties:
+              input: {}
+              output:
+                type: string
+        version:
+          type: number
+
+    RunResult:
+      type: object
+      properties:
+        ordinal:
+          type: integer
+        input:
+          type: string
+        expected:
+          type: string
+          nullable: true
+        got:
+          type: string
+        status:
+          type: string
+          enum: [passed, wrong_answer, time_limit, runtime_error, compilation_error, server_error]
+        time:
+          type: number
+
+    SubmitResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        submissionId:
+          type: string
+        status:
+          type: string
+          example: pending
+        pollAfterMs:
+          type: integer
+          example: 1000
+
+    SubmissionDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, accepted, wrong_answer, time_limit, runtime_error, compilation_error, server_error]
+        isTerminal:
+          type: boolean
+        problemVersion:
+          type: number
+        language:
+          type: string
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              ordinal:
+                type: integer
+              status:
+                type: string
+              time:
+                type: number
+        time:
+          type: number
+        createdAt:
+          type: string
+
+    UserStats:
+      type: object
+      properties:
+        problemsAvailable:
+          type: integer
+        currentStreak:
+          type: integer
+        streakText:
+          type: string
+        ranking:
+          type: string
+        solvedCount:
+          type: integer
+        totalUsers:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: string
+        message:
+          type: string
+        requestId:
+          type: string

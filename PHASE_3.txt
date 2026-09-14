@@ -1,0 +1,96 @@
+====================================================================
+PHASE 3 — ENGINEERING QUALITY, TESTS AND DELIVERY
+====================================================================
+
+Purpose
+-------
+Make changes safe to ship. At this stage the goal is not more features; it is
+repeatable builds, a tested API/judge boundary, and a codebase another engineer
+can confidently modify.
+
+Work items
+----------
+1. Restructure the backend into routes -> controllers -> services -> data
+   access, with shared request validation and one typed error format. Remove or
+   clearly retire duplicate legacy routes (run.js, submit.js, executeRoute.js)
+   so an unsafe endpoint cannot accidentally be mounted later.
+2. Introduce TypeScript incrementally (or rigorous JSDoc as a temporary step).
+   Define shared API DTOs/verdict enums for frontend and backend. Never let the
+   UI guess string statuses.
+3. Add tests:
+   - unit: output normalization, adapter generation, auth helpers and validators;
+   - integration: Express routes with Mongo/Redis test containers;
+   - worker: success, wrong answer, timeout, retry and missing problem;
+   - end-to-end: register/login, solve, queue, verdict and history using a real
+     browser;
+   - regression fixtures for every published problem/language.
+4. Add lint, formatting, dependency checks and commit hooks. Keep test data
+   deterministic; do not make ordinary CI depend on a developer's local Docker,
+   MongoDB or Redis process.
+5. Create a GitHub Actions pipeline: install with lockfiles, lint, unit and
+   integration tests, frontend production build, container build, vulnerability
+   scan, and publish only from protected tags/branches.
+6. Provide `.env.example`, a configuration module that validates required
+   values at startup, and Docker Compose for API, worker, Redis and MongoDB.
+   Local startup must be one documented command.
+
+Quality gate flow
+-----------------
+
+ [Pull request]
+       |
+       v
+ [format + lint + static/type check] --failure--> [report, block merge]
+       |
+       v
+ [unit tests + adapter fixtures] ----failure----> [report, block merge]
+       |
+       v
+ [API/worker integration tests]
+       |
+       v
+ [browser E2E smoke test]
+       |
+       v
+ [build frontend + API + sandbox images]
+       |
+       v
+ [dependency/image security scan] --high issue--> [block or approved exception]
+       |
+       v
+ [required review + protected merge]
+       |
+       v
+ [staging deployment and smoke check]
+
+Test matrix (minimum)
+---------------------
+Component          Prove
+-----------------  ------------------------------------------------------------
+Auth               expired/malformed token, wrong password, ownership checks
+Problems           slug lookup, published-only visibility, cursor pagination
+Run                public-only inputs, payload limit, each language response
+Submit/queue       202 response, idempotency, retry, duplicate-job behavior
+Worker             verdict mapping, cleanup, final state after worker restart
+Sandbox adapter    arrays, objects, strings, linked lists, malformed input
+Frontend           loading/error/terminal verdict, accessible keyboard flow
+
+Operational readiness additions
+--------------------------------
+* Add a request/correlation ID to API logs and propagate the submission ID into
+  worker logs. Log structured JSON, never passwords, tokens or source code.
+* Expose `/health/live` (process alive) and `/health/ready` (Mongo/Redis ready)
+  separately. A 200 from a process that cannot queue work is not readiness.
+* Version API responses (`/api/v1`) before external clients exist. Document the
+  contract with OpenAPI and generate a client or shared types.
+* Use database migrations/versioned seed scripts instead of hand-editing data.
+
+Definition of done
+------------------
+* CI is required before merge and runs from a clean checkout.
+* Core API and worker paths have meaningful automated coverage, with at least
+  one E2E happy path and failure path.
+* `docker compose up` starts the complete development stack and the README is
+  reproducible by a new contributor.
+* A deploy has a clear rollback artifact and a tested backup/restore procedure.
+

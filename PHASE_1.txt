@@ -4,10 +4,9 @@ ONLINE JUDGE SCALABLE ARCHITECTURE
 ===============================
 
 docker start redis
-nodemon server.js
+npx nodemon server.js
 node workers/judgeWorker.js
 npm run dev
-
 
 1) WHAT IS REDIS?
 

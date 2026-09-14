@@ -1,0 +1,101 @@
+====================================================================
+PHASE 5 — PRODUCTION PLATFORM, OBSERVABILITY AND SCALE
+====================================================================
+
+Purpose
+-------
+Convert the single-machine architecture into independently deployable services
+that can be observed, scaled and recovered. Scale only after Phase 2 correctness
+and Phase 4 isolation are proven.
+
+Target architecture
+-------------------
+
+ [CDN/WAF]
+      |
+      v
+ [load balancer] ---> [stateless API replicas] ---> [MongoDB replica set]
+                              |                          |
+                              v                          v
+                       [Redis/BullMQ]              [backups + PITR]
+                              |
+              +---------------+----------------+
+              |                                |
+              v                                v
+      [interactive-run workers]          [submission workers]
+              |                                |
+              +---------------+----------------+
+                              v
+                   [isolated executor pool]
+                              |
+                              v
+          [metrics, logs, traces, alerting, dashboards]
+
+Build sequence
+--------------
+1. Containerize API, worker and sandbox with pinned, minimal base images and
+   non-root users. Configure all service values through validated environment
+   variables. Use Compose locally; choose a managed container platform or
+   Kubernetes only when operational capacity warrants it.
+2. Split interactive Run and judged Submit into separate queues and worker
+   pools so rapid experimentation cannot starve final submissions. Set BullMQ
+   retries, exponential backoff, job timeout, dead-letter handling and a
+   reconciliation job that repairs submissions stuck in pending/running.
+3. Scale workers on queue depth and executor utilization, not API request rate.
+   Apply backpressure: reject/defer new runs when safety capacity is exhausted
+   and show an honest wait state to the user.
+4. Add observability: request latency/error rate, queue wait age/depth,
+   attempts/dead letters, verdict distribution, runner startup/execution time,
+   CPU/memory utilization and Mongo query latency. Trace a submission from API
+   to job to worker to final Mongo update using one correlation ID.
+5. Operate data intentionally: managed Mongo replica set, automated encrypted
+   backups and restore drills; Redis persistence/HA appropriate to queue
+   durability; TTL policies for verbose run outputs and logs; tested migrations.
+6. Deploy progressively: staging mirrors production interfaces, migrations are
+   backward-compatible, canary a small percentage, run smoke checks, observe
+   SLOs, then promote or roll back.
+
+Autoscaling and recovery flow
+-----------------------------
+
+ [metric collection every interval]
+                 |
+                 v
+  [queue depth + oldest-job age + executor saturation]
+                 |
+       +---------+----------+
+       |                    |
+ below target            above target
+       |                    |
+       v                    v
+ [retain minimum]   [add bounded worker capacity]
+                            |
+                            v
+                 [capacity still exhausted?]
+                     |                   |
+                    no                  yes
+                     |                   |
+                     v                   v
+                [drain queue]  [backpressure + alert + protect API]
+                                      |
+                                      v
+                           [recover capacity / retry safe jobs / reconcile]
+
+Service objectives (initial, then measure and revise)
+------------------------------------------------------
+* API availability: 99.9% monthly excluding planned maintenance.
+* `POST /submissions` p95 under 300 ms when dependencies are healthy.
+* 95% of normal submissions begin execution within 10 seconds.
+* No lost accepted job: every created submission reaches a terminal state or is
+  explicitly retried/reconciled.
+* Alert on API 5xx, readiness failure, queue age, worker crash loops, dead
+  letters, sandbox errors, database replica health and backup failure.
+
+Definition of done
+------------------
+* One API/worker instance can be terminated during load without losing jobs.
+* A load test meets documented capacity and latency targets with controlled
+  backpressure.
+* Dashboards and actionable runbooks exist for the listed alerts.
+* A staged deployment and a restore drill have both succeeded.
+

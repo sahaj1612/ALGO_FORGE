@@ -1,0 +1,110 @@
+====================================================================
+PHASE 2 — COMPLETE THE ONLINE-JUDGE PRODUCT
+====================================================================
+
+Purpose
+-------
+Phase 1 has established the asynchronous execution path. Phase 2 turns that
+technical proof into a dependable user-facing judge. The aim is that a learner
+can discover a problem, understand its contract, run code safely against public
+examples, submit it, and later inspect a trustworthy result.
+
+What exists at the start
+------------------------
+* React/Vite UI with Monaco, authentication, dashboard, profile and problem
+  pages.
+* Express + MongoDB API, Redis/BullMQ submission queue and a separate worker.
+* Docker execution for C, C++, Java and Python. The worker persists submission
+  status and test-case results.
+
+Important gaps to close
+-----------------------
+* The declared default language is JavaScript, but the judge's LANGUAGES map
+  currently has no JavaScript runner. Make defaults and supported languages
+  agree before exposing the feature.
+* Problem detail lookup uses findById only, whereas submission/run also accept
+  a slug. Provide one canonical public identifier and consistent 404 handling.
+* The current wrapper infers a few problem shapes (arrays, cycles, Dijkstra).
+  This cannot accurately execute a growing catalogue. Store an explicit
+  function signature/adapter specification per problem instead.
+* Submission history is capped at 100 without pagination, and a poll response
+  does not have a version or terminal-status contract.
+
+Deliverables
+------------
+1. Define a Problem Contract: slug, title, constraints, difficulty, topics,
+   starter code per language, callable signature, public examples, hidden test
+   cases, time limit, memory limit, supported languages and editorial metadata.
+   Validate it with a schema validator before any problem is published.
+2. Build admin-only problem CRUD with draft/review/published/retired lifecycle.
+   Never return hidden tests or their expected values from public endpoints.
+3. Replace heuristic wrappers with language-specific adapters generated from
+   the stored contract. Unit-test every adapter against representative inputs.
+4. Make Run use only public examples/custom input and cap both number and size
+   of custom cases. Make Submit use immutable hidden tests and snapshot the
+   problem version on the submission so old results stay reproducible.
+5. Finish result UX: queued/running state, polling backoff and timeout, a clear
+   terminal verdict, runtime/error display, and a "resubmit" action. Add
+   cursor-based submission history and filters by problem, language and verdict.
+6. Add learning features grounded in persisted data: solved state, bookmarks,
+   notes, recently viewed, topic/difficulty filters, and progress calculated by
+   server-side aggregation rather than client copies.
+
+Core submission flow
+--------------------
+
+ [Problem page] --validate editor state--> [POST /submissions]
+        |                                         |
+        | public Run                              | validate user, language,
+        v                                         | payload and published problem
+ [POST /run]                                      v
+        |                                 [Mongo: pending submission
+        v                                  + immutable problem version]
+ [public test executor]                           |
+        |                                         v
+        v                                  [BullMQ judge job]
+ [show diagnostics]                               |
+                                                  v
+                                        [worker claims job -> running]
+                                                  |
+                                                  v
+                                  [adapter + isolated execution per hidden test]
+                                                  |
+                         +------------------------+----------------------+
+                         | all pass               | first failure/error   |
+                         v                        v                       
+                    [accepted]       [WA / TLE / RE / CE / server error]
+                         \                        /
+                          v                      v
+                    [Mongo: final result, metrics, version]
+                                      |
+                                      v
+                    [GET /submissions/:id polling or SSE]
+                                      |
+                                      v
+                              [verdict and details in UI]
+
+Data and API design
+-------------------
+* Use `GET /api/problems?cursor=&topic=&difficulty=&q=` with a stable sort;
+  return `{items, nextCursor}`. Keep the list projection small.
+* Use `GET /api/problems/:slug` for public detail. Return only published
+  problem data and only public examples.
+* Use `POST /api/submissions` and return 202 plus `{id, status, pollAfterMs}`.
+  `GET /api/submissions/:id` must authorize ownership and return a documented
+  terminal/non-terminal status.
+* Add indexes: Problem `{slug: 1}` unique, `{status: 1, difficulty: 1, topic:
+  1}`; Submission `{userId: 1, createdAt: -1}`, `{problemId: 1, createdAt:
+  -1}`, and `{status: 1, createdAt: 1}`. Verify with `explain()`.
+* Keep source code immutable per submission. Store public testcase detail only
+  when it is safe to reveal; hidden failures should expose a testcase ordinal or
+  sanitized diagnostic, never inputs/outputs.
+
+Definition of done
+------------------
+* A seed/import pipeline can publish at least 30 varied, validated problems.
+* Every advertised language has a working adapter and an integration test.
+* A user cannot read hidden tests through list/detail/run/submission endpoints.
+* Refreshing the browser during judging recovers the exact state.
+* Pagination works beyond 100 submissions and authorization is tested.
+

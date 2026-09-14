@@ -1,199 +1,155 @@
-const { Worker } = require("bullmq");
-const fs = require("fs");
-const path = require("path");
-const { spawnSync } = require("child_process");
+const config = require('../config/env');
+const { Worker } = require('bullmq');
+const mongoose = require('mongoose');
+const Submission = require('../models/Submission');
+const Problem = require('../models/Problem');
+const { execute, matches } = require('../services/judge');
+const logger = require('../utils/logger');
 
-const Submission = require("../models/Submission");
-const Problem = require("../models/Problem");
+// Connect to MongoDB if not already connected
+if (mongoose.connection.readyState === 0) {
+  mongoose.connect(config.mongodbUri)
+    .then(() => logger.info('Judge worker connected to MongoDB'))
+    .catch(err => logger.error(`Judge worker MongoDB connection error: ${err.message}`));
+}
 
-const mongoose = require("mongoose");
+/**
+ * Core submission processor function
+ * Exposed for direct unit/worker test invocation as well as BullMQ processing.
+ */
+async function processSubmissionJob({ submissionId, jobId }) {
+  const subId = String(submissionId);
+  logger.info('Processing submission job', { submissionId: subId, jobId });
 
-mongoose.connect("mongodb://127.0.0.1:27017/algoforge")
-  .then(()=> console.log("Worker DB Connected"))
-  .catch(err => console.log(err));
+  const sub = await Submission.findById(subId);
+  if (!sub) {
+    logger.warn('Submission not found in database', { submissionId: subId });
+    return null;
+  }
 
-const worker = new Worker(
-  "judge-queue",
-  async job => {
+  await Submission.findByIdAndUpdate(subId, { status: 'running' });
 
-    console.log("🟡 Job received:", job.data);
-
-    const { submissionId } = job.data;
-
-    console.log("🔵 Judging:", submissionId);
-
-    const sub = await Submission.findById(submissionId);
-    if (!sub) return;
-
-    sub.status = "running";
-    await sub.save();
-
+  try {
     const problem = await Problem.findById(sub.problemId);
     if (!problem) {
-      sub.status = "server_error";
-      await sub.save();
-      return;
+      logger.warn('Problem no longer exists for submission', { submissionId: subId, problemId: sub.problemId });
+      return Submission.findByIdAndUpdate(
+        subId,
+        { status: 'server_error', error: 'Problem no longer exists.' },
+        { new: true }
+      );
     }
 
-    const sandboxPath = path.resolve(__dirname, "../sandbox");
-    const dockerPath = sandboxPath.replace(/\\/g, "/");
+    const problemVersion = problem.version || 1;
 
-    let finalVerdict = "ACCEPTED";
-    let results = [];
+    const casesToRun = (problem.hiddenTestcases && problem.hiddenTestcases.length > 0)
+      ? problem.hiddenTestcases
+      : (problem.testcases || []);
+
+    const results = [];
     let maxTime = 0;
+    let maxMemory = 0;
+    let verdict = 'accepted';
+    let ordinal = 1;
 
-    try {
+    for (const test of casesToRun) {
+      const result = await execute({
+        code: sub.code,
+        input: test.input,
+        language: sub.language,
+        timeLimit: problem.timeLimit || 4000,
+        memoryLimit: problem.memoryLimit || 256
+      });
 
-      for (const tc of problem.hiddenTestcases) {
+      maxTime = Math.max(maxTime, result.time || 0);
+      maxMemory = Math.max(maxMemory, result.memory || 0);
 
-        const wrappedCode = `
-${sub.code}
-
-try {
-  const result = solve(${JSON.stringify(tc.input)});
-  console.log(result);
-} catch(e){
-  console.error(e.toString());
-}
-`;
-
-        const filePath = path.join(sandboxPath, "code.js");
-        fs.writeFileSync(filePath, wrappedCode);
-
-        const start = Date.now();
-
-        const result = spawnSync(
-          "docker",
-          [
-            "run",
-            "--rm",
-
-            // ⭐ SECURITY LIMITS
-            "--memory=128m",
-            "--cpus=0.5",
-            "--pids-limit=64",
-
-            "-v",
-            `${dockerPath}:/app`,
-            "code-runner"
-          ],
-          { encoding: "utf-8", timeout: 3000 }
-        );
-
-        const end = Date.now();
-        const timeTaken = end - start;
-        maxTime = Math.max(maxTime, timeTaken);
-
-        // ⭐ TLE
-        if (result.signal === "SIGTERM") {
-
-          finalVerdict = "TIME LIMIT EXCEEDED";
-
-          results.push({
-            input: JSON.stringify(tc.input),
-            expected: tc.output.toString(),
-            got: "Time Limit Exceeded",
-            status: "TLE"
-          });
-
-          break;
-        }
-
-        // ⭐ Runtime Error
-        if (result.error || (result.stderr && result.stderr.trim() !== "")) {
-
-          finalVerdict = "RUN TIME ERROR";
-
-          results.push({
-            input: JSON.stringify(tc.input),
-            expected: tc.output.toString(),
-            got: result.stderr || result.error?.toString(),
-            status: "Runtime Error"
-          });
-
-          break;
-        }
-
-        let got = result.stdout.trim();
-        let expected = tc.output.toString().trim();
-
-        // ⭐ numeric compare
-        if (!isNaN(got) && !isNaN(expected)) {
-          got = Number(got);
-          expected = Number(expected);
-        }
-
-        // ⭐ JSON compare
-        try {
-          const g = JSON.parse(got);
-          const e = JSON.parse(expected);
-
-          if (JSON.stringify(g) === JSON.stringify(e)) {
-
-            results.push({
-              input: JSON.stringify(tc.input),
-              expected,
-              got,
-              status: "Passed"
-            });
-
-            continue;
-          }
-        } catch {}
-
-        // ⭐ final compare
-        if (got !== expected) {
-
-          finalVerdict = "WRONG ANSWER";
-
-          results.push({
-            input: JSON.stringify(tc.input),
-            expected,
-            got,
-            status: "Failed"
-          });
-
-          break;
-        }
-
-        // ⭐ testcase passed
-        results.push({
-          input: JSON.stringify(tc.input),
-          expected,
-          got,
-          status: "Passed"
-        });
-
-        // ⭐ cleanup file after each testcase
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
+      let status;
+      if (result.verdict !== 'accepted') {
+        status = result.verdict;
+      } else if (!matches(result.output, test.output)) {
+        status = 'wrong_answer';
+      } else {
+        status = 'passed';
       }
 
-    } catch (err) {
+      // Hidden testcases must NEVER reveal raw input or expected output
+      results.push({
+        ordinal,
+        status,
+        time: result.time || 0,
+        memory: result.memory || null,
+        error: result.error || null
+      });
 
-      console.log("Worker Error:", err);
-      finalVerdict = "SERVER ERROR";
-
+      if (status !== 'passed') {
+        verdict = status;
+        break;
+      }
+      ordinal++;
     }
 
-    // ⭐ FINAL DB UPDATE
-    sub.status = finalVerdict;
-    sub.results = results;
-    sub.time = maxTime;
+    const updated = await Submission.findByIdAndUpdate(
+      subId,
+      {
+        status: verdict,
+        results,
+        time: maxTime,
+        memory: maxMemory || null,
+        error: results.find(r => r.error)?.error || null,
+        problemVersion
+      },
+      { new: true }
+    );
 
-    await sub.save();
+    logger.info('Submission judged successfully', {
+      submissionId: subId,
+      verdict,
+      casesRun: results.length,
+      time: maxTime
+    });
 
-    console.log("🟢 Judged:", submissionId, finalVerdict);
-
-  },
-  {
-    connection: {
-      host: "127.0.0.1",
-      port: 6379,
-    },
-    concurrency: 3   // ⭐ parallel jobs per worker
+    return updated;
+  } catch (err) {
+    logger.error(`Judge worker error: ${err.message}`, {
+      submissionId: subId,
+      error: err.message
+    });
+    return Submission.findByIdAndUpdate(
+      subId,
+      {
+        status: 'server_error',
+        error: err.message || 'Worker encountered an internal error.'
+      },
+      { new: true }
+    );
   }
-);
+}
 
-console.log("🚀 Judge Worker Started");
+let worker = null;
+if (process.env.NODE_ENV !== 'test') {
+  try {
+    worker = new Worker('judge-queue', async (job) => {
+      return processSubmissionJob({
+        submissionId: job.data.submissionId,
+        jobId: job.id
+      });
+    }, {
+      connection: {
+        host: config.redisHost,
+        port: config.redisPort
+      },
+      concurrency: 2
+    });
+
+    worker.on('ready', () => logger.info('Judge worker started and listening on judge-queue'));
+    worker.on('error', err => logger.error(`Judge worker BullMQ error: ${err.message}`));
+  } catch (initErr) {
+    logger.error(`Judge worker failed to initialize: ${initErr.message}`);
+  }
+}
+
+module.exports = {
+  processSubmissionJob,
+  worker
+};

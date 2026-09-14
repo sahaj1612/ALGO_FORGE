@@ -1,0 +1,32 @@
+{
+  "name": "algoforge-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack algorithm practice platform with isolated code execution and real-time progress tracking.",
+  "scripts": {
+    "test": "npm --prefix Backend test",
+    "test:unit": "npm --prefix Backend run test:unit",
+    "test:integration": "npm --prefix Backend run test:integration",
+    "test:worker": "npm --prefix Backend run test:worker",
+    "test:e2e": "npm --prefix Backend run test:e2e",
+    "test:fixtures": "npm --prefix Backend run test:fixtures",
+    "lint": "npm --prefix Frontend run lint",
+    "build": "npm --prefix Frontend run build",
+    "seed": "npm --prefix Backend run seed",
+    "migrate": "npm --prefix Backend run migrate",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "pre-commit": "node scripts/pre-commit.js"
+  },
+  "keywords": [
+    "online-judge",
+    "algorithms",
+    "react",
+    "express",
+    "bullmq",
+    "redis",
+    "mongodb"
+  ],
+  "author": "Sahaj",
+  "license": "ISC"
+}

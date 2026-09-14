@@ -1,0 +1,15 @@
+FROM node:20-alpine
+
+# Install Docker CLI so the worker can invoke sandbox containers
+RUN apk add --no-cache docker-cli bash
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY . .
+
+ENV NODE_ENV=production
+
+CMD ["node", "workers/judgeWorker.js"]

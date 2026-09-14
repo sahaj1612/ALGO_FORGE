@@ -1,199 +1,302 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Code2 } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Award, CheckCircle2, Code2, Flame, History } from 'lucide-react';
+import SiteHeader from '../components/SiteHeader';
+import SolvedStatsCard from '../components/SolvedStatsCard';
+
+const API = 'http://localhost:5000/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
+  const [problems, setProblems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-
-    if (token) {
-      localStorage.setItem("token", token);
-      window.history.replaceState({}, document.title, "/dashboard");
+    const receivedToken = new URLSearchParams(window.location.search).get('token');
+    if (receivedToken) {
+      localStorage.setItem('token', receivedToken);
+      window.history.replaceState({}, '', '/dashboard');
     }
 
-    const storedToken = localStorage.getItem("token");
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
 
-    if (storedToken) {
-      fetch("http://localhost:5000/api/profile", {
-        headers: {
-          Authorization: `Bearer ${storedToken}`,
-        },
+    const headers = { Authorization: `Bearer ${token}` };
+
+    Promise.all([
+      fetch(`${API}/submissions`, { headers })
+        .then(response => (response.ok ? response.json() : []))
+        .catch(() => []),
+      fetch(`${API}/problems`)
+        .then(response => (response.ok ? response.json() : []))
+        .catch(() => []),
+    ])
+      .then(([subsData, probsData]) => {
+        setSubmissions(Array.isArray(subsData) ? subsData : []);
+        setProblems(Array.isArray(probsData) ? probsData : []);
       })
-        .then((res) => res.json())
-        .then((data) => setUser(data))
-        .catch((err) => console.log(err));
-    }
-  }, []);
+      .catch(err => {
+        console.error('Error fetching dashboard data:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [navigate]);
 
-  // 🔥 Mock Stats (Replace later with backend data)
-  const stats = {
-    totalSolved: 0,
-    totalSubmissions: 100,
-    easy: 0,
-    medium: 0,
-    hard: 0,
-  };
-
-  const accuracy = Math.round(
-    (stats.totalSolved / stats.totalSubmissions) * 100
+  const accepted = submissions.filter(
+    submission => submission.status?.toLowerCase() === 'accepted'
   );
 
-  const easyPercent = (stats.easy / stats.totalSolved) * 100;
-  const mediumPercent = (stats.medium / stats.totalSolved) * 100;
-  const hardPercent = (stats.hard / stats.totalSolved) * 100;
+  const solvedIds = new Set(
+    accepted
+      .map(s => String(s.problemId?._id || s.problemId || ''))
+      .filter(Boolean)
+  );
+
+  const attemptedIds = new Set(
+    submissions
+      .map(s => String(s.problemId?._id || s.problemId || ''))
+      .filter(Boolean)
+  );
+
+  const attemptingCount = [...attemptedIds].filter(id => !solvedIds.has(id)).length;
+
+  const totalEasy = problems.filter(p => p.difficulty === 'Easy').length;
+  const totalMed = problems.filter(p => p.difficulty === 'Medium').length;
+  const totalHard = problems.filter(p => p.difficulty === 'Hard').length;
+  const totalProblems = problems.length || (totalEasy + totalMed + totalHard);
+
+  const solvedEasy = new Set(
+    accepted
+      .filter(s => {
+        const diff =
+          s.problemId?.difficulty ||
+          problems.find(p => String(p._id) === String(s.problemId?._id || s.problemId))?.difficulty;
+        return diff === 'Easy';
+      })
+      .map(s => String(s.problemId?._id || s.problemId))
+  ).size;
+
+  const solvedMed = new Set(
+    accepted
+      .filter(s => {
+        const diff =
+          s.problemId?.difficulty ||
+          problems.find(p => String(p._id) === String(s.problemId?._id || s.problemId))?.difficulty;
+        return diff === 'Medium';
+      })
+      .map(s => String(s.problemId?._id || s.problemId))
+  ).size;
+
+  const solvedHard = new Set(
+    accepted
+      .filter(s => {
+        const diff =
+          s.problemId?.difficulty ||
+          problems.find(p => String(p._id) === String(s.problemId?._id || s.problemId))?.difficulty;
+        return diff === 'Hard';
+      })
+      .map(s => String(s.problemId?._id || s.problemId))
+  ).size;
+
+  const totalSolved = solvedIds.size;
+  const accuracy = submissions.length
+    ? Math.round((accepted.length / submissions.length) * 100)
+    : 0;
+
+  const solvedStats = {
+    easy: { solved: solvedEasy, total: totalEasy },
+    medium: { solved: solvedMed, total: totalMed },
+    hard: { solved: solvedHard, total: totalHard },
+    totalSolved,
+    totalProblems,
+    attempting: attemptingCount,
+  };
 
   return (
-    <div className="min-h-screen bg-black text-white px-8 py-10">
+    <div className="min-h-screen bg-black text-white selection:bg-red-500 selection:text-white">
+      <SiteHeader />
 
-{/* HEADER */}
-<div className="flex items-center justify-between mb-12">
+      <main className="max-w-7xl mx-auto px-6 sm:px-8 py-8">
+        {/* Progress & Overview Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Main Solved Gauge Feature Card */}
+          <div className="lg:col-span-6 xl:col-span-5 flex flex-col">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 mb-3.5 flex items-center gap-2 h-6">
+              <CheckCircle2 size={16} className="text-red-500" />
+              Problem Solving Stats
+            </h2>
+            <div className="flex-1 flex">
+              <SolvedStatsCard solvedStats={solvedStats} />
+            </div>
+          </div>
 
-  {/* LEFT - LOGO */}
-  <div
-    onClick={() => navigate("/")}
-    className="flex items-center gap-2 text-2xl font-bold text-red-500 cursor-pointer hover:scale-105 transition"
-  >
-    <Code2 /> AlgoForge
-  </div>
+          {/* Key Metrics Stats Grid */}
+          <div className="lg:col-span-6 xl:col-span-7 flex flex-col">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 mb-3.5 flex items-center gap-2 h-6">
+              <Award size={16} className="text-red-500" />
+              Overall Performance
+            </h2>
 
-  {/* RIGHT - PROFILE + BACK BUTTON */}
-  <div className="flex items-center gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                    Total Submissions
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-white">{submissions.length}</p>
+                  <p className="text-xs text-zinc-500 mt-1">Across all difficulties</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-zinc-800/80 border border-zinc-700/40 flex items-center justify-center text-zinc-300">
+                  <Code2 size={24} />
+                </div>
+              </div>
 
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                    Acceptance Rate
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-emerald-400">{accuracy}%</p>
+                  <p className="text-xs text-zinc-500 mt-1">{accepted.length} accepted runs</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <CheckCircle2 size={24} />
+                </div>
+              </div>
 
-    {user && (
-      <div className="flex items-center gap-3">
-        <img
-          src={user.picture}
-          alt="profile"
-          className="w-11 h-11 rounded-full border-2 border-red-500 hover:scale-110 transition duration-300 cursor-pointer"
-          onClick={() => navigate("/profile")}
-        />
-        <div className="hidden md:block">
-          <p className="font-semibold">{user.name}</p>
-          <p className="text-xs text-zinc-400">{user.email}</p>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                    Problems Solved
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-red-500">{totalSolved}</p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {totalProblems > 0 ? `${Math.round((totalSolved / totalProblems) * 100)}% of platform` : 'Platform total'}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                  <Flame size={24} />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                    Currently Attempting
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-amber-400">{attemptingCount}</p>
+                  <p className="text-xs text-zinc-500 mt-1">Unsolved submitted problems</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <History size={24} />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    )}
 
-  </div>
-
-
-
-</div>
-      {/* STATS SECTION */}
-      <div className="grid lg:grid-cols-2 gap-12">
-
-        {/* ACCURACY CIRCLE */}
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="bg-zinc-900 p-10 rounded-2xl border border-zinc-800
-          hover:border-red-500 hover:shadow-lg hover:shadow-red-900/40
-          transition-all duration-300"
-        >
-          <h2 className="text-xl font-bold mb-8">Overall Accuracy</h2>
-
-          <div className="flex flex-col items-center justify-center">
-
-            <div className="relative w-44 h-44">
-              <svg className="transform -rotate-90 w-44 h-44">
-                <circle
-                  cx="88"
-                  cy="88"
-                  r="75"
-                  stroke="#27272a"
-                  strokeWidth="12"
-                  fill="transparent"
-                />
-                <circle
-                  cx="88"
-                  cy="88"
-                  r="75"
-                  stroke="#ef4444"
-                  strokeWidth="12"
-                  fill="transparent"
-                  strokeDasharray={2 * Math.PI * 75}
-                  strokeDashoffset={
-                    2 * Math.PI * 75 * (1 - accuracy / 100)
-                  }
-                  strokeLinecap="round"
-                  className="transition-all duration-1000"
-                />
-              </svg>
-
-              <div className="absolute inset-0 flex items-center justify-center text-3xl font-bold">
-                {accuracy}%
-              </div>
-            </div>
-
-            <p className="text-zinc-400 mt-6">
-              {stats.totalSolved} / {stats.totalSubmissions} Accepted
-            </p>
-
+        {/* Recent Submissions Section */}
+        <div className="mt-12">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <History size={20} className="text-red-500" />
+              Recent Submissions
+            </h2>
+            {submissions.length > 0 && (
+              <span className="text-xs text-zinc-500">
+                Showing latest {Math.min(10, submissions.length)}
+              </span>
+            )}
           </div>
-        </motion.div>
 
-        {/* DIFFICULTY BREAKDOWN */}
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="bg-zinc-900 p-10 rounded-2xl border border-zinc-800
-          hover:border-red-500 hover:shadow-lg hover:shadow-red-900/40
-          transition-all duration-300"
-        >
-          <h2 className="text-xl font-bold mb-8">Problem Breakdown</h2>
+          {loading ? (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center text-zinc-500">
+              Loading submissions...
+            </div>
+          ) : submissions.length === 0 ? (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center">
+              <p className="text-zinc-400 text-base">No submissions yet!</p>
+              <p className="text-zinc-600 text-sm mt-1">
+                Start solving problems to track your progress and performance.
+              </p>
+              <button
+                onClick={() => navigate('/explore')}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-red-500 transition"
+              >
+                Start Practicing
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-lg">
+              <div className="divide-y divide-zinc-800/60">
+                {submissions.slice(0, 10).map(submission => {
+                  const isAccepted = submission.status?.toLowerCase() === 'accepted';
+                  const problemTitle =
+                    submission.problemId?.title ||
+                    problems.find(p => String(p._id) === String(submission.problemId?._id || submission.problemId))?.title ||
+                    'Deleted Problem';
+                  const problemDiff =
+                    submission.problemId?.difficulty ||
+                    problems.find(p => String(p._id) === String(submission.problemId?._id || submission.problemId))?.difficulty;
 
-          <div className="space-y-8">
+                  return (
+                    <div
+                      key={submission._id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 px-6 hover:bg-zinc-800/40 transition gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${isAccepted ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-red-400'
+                            }`}
+                        />
+                        <span className="font-semibold text-zinc-200">{problemTitle}</span>
+                        {problemDiff && (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${problemDiff === 'Easy'
+                                ? 'bg-teal-500/10 text-[#00b8a3]'
+                                : problemDiff === 'Medium'
+                                  ? 'bg-amber-500/10 text-[#ffc01e]'
+                                  : 'bg-rose-500/10 text-[#ef476f]'
+                              }`}
+                          >
+                            {problemDiff}
+                          </span>
+                        )}
+                      </div>
 
-            {/* EASY */}
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-green-400 font-semibold">Easy</span>
-                <span>{stats.easy}</span>
-              </div>
-              <div className="w-full bg-zinc-800 rounded-full h-3">
-                <div
-                  className="bg-green-500 h-3 rounded-full transition-all duration-700"
-                  style={{ width: `${easyPercent}%` }}
-                />
+                      <div className="flex items-center gap-4 text-sm text-zinc-400">
+                        <span
+                          className={`font-semibold capitalize ${isAccepted ? 'text-emerald-400' : 'text-red-400'
+                            }`}
+                        >
+                          {submission.status.replaceAll('_', ' ')}
+                        </span>
+                        <span>·</span>
+                        <span>{submission.time != null ? `${submission.time} ms` : '— ms'}</span>
+                        <span>·</span>
+                        <span>{submission.memory != null ? `${submission.memory} MB` : '— MB'}</span>
+                        {submission.createdAt && (
+                          <>
+                            <span>·</span>
+                            <span className="text-zinc-500 text-xs">
+                              {new Date(submission.createdAt).toLocaleDateString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-
-            {/* MEDIUM */}
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-yellow-400 font-semibold">Medium</span>
-                <span>{stats.medium}</span>
-              </div>
-              <div className="w-full bg-zinc-800 rounded-full h-3">
-                <div
-                  className="bg-yellow-500 h-3 rounded-full transition-all duration-700"
-                  style={{ width: `${mediumPercent}%` }}
-                />
-              </div>
-            </div>
-
-            {/* HARD */}
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-red-500 font-semibold">Hard</span>
-                <span>{stats.hard}</span>
-              </div>
-              <div className="w-full bg-zinc-800 rounded-full h-3">
-                <div
-                  className="bg-red-500 h-3 rounded-full transition-all duration-700"
-                  style={{ width: `${hardPercent}%` }}
-                />
-              </div>
-            </div>
-
-          </div>
-        </motion.div>
-      </div>
-
+          )}
+        </div>
+      </main>
     </div>
   );
 }

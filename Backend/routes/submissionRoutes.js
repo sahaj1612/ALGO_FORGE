@@ -1,34 +1,12 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
+const auth = require('../middleware/authMiddleware');
+const submissionController = require('../controllers/submissionController');
 
-const Submission = require("../models/Submission");
-const auth = require("../middleware/authMiddleware");
+// 1. GET SUBMISSIONS HISTORY (Cursor-based pagination with filters)
+router.get('/', auth, submissionController.listSubmissions);
 
-router.get("/:id", auth, async (req, res) => {
-
-  try {
-
-    const sub = await Submission.findById(req.params.id);
-
-    if (!sub) {
-      return res.json({ status: "not_found" });
-    }
-
-    res.json({
-      status: sub.status,
-      output: sub.output,
-      error: sub.error,
-      time: sub.time,
-      memory: sub.memory
-    });
-
-  } catch (err) {
-
-    console.log(err);
-    res.json({ status: "server_error" });
-
-  }
-
-});
+// 2. GET SINGLE SUBMISSION (Enforces ownership & returns documented terminal status)
+router.get('/:id', auth, submissionController.getSubmission);
 
 module.exports = router;

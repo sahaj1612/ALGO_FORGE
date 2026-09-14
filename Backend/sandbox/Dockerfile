@@ -1,9 +1,5 @@
-FROM node:18
+FROM alpine:3.20
 
-WORKDIR /app
+RUN apk add --no-cache gcc g++ musl-dev openjdk21 python3 bash
 
-COPY runner.js .
-
-RUN npm init -y
-
-CMD ["node", "runner.js"]
+WORKDIR /workspace
