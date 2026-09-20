@@ -78,11 +78,61 @@ export function AuthProvider({ children }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
 
+  const refreshAccessToken = async () => {
+    const storedRefresh = localStorage.getItem('refreshToken');
+    if (!storedRefresh) return null;
+    try {
+      const res = await fetch(`${API}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: storedRefresh })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('token', data.accessToken);
+        if (data.refreshToken) {
+          localStorage.setItem('refreshToken', data.refreshToken);
+        }
+        setToken(data.accessToken);
+        return data.accessToken;
+      }
+    } catch {}
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    setToken(null);
+    setUser(null);
+    return null;
+  };
+
+  const authenticatedFetch = async (url, options = {}) => {
+    let currentToken = localStorage.getItem('token');
+    const headers = { ...options.headers };
+    if (currentToken) {
+      headers.Authorization = `Bearer ${currentToken}`;
+    }
+
+    let response = await fetch(url, { ...options, headers });
+    if (response.status === 401 && localStorage.getItem('refreshToken')) {
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        headers.Authorization = `Bearer ${newToken}`;
+        response = await fetch(url, { ...options, headers });
+      }
+    }
+    return response;
+  };
+
   useEffect(() => {
-    const tokenFromRedirect = new URLSearchParams(window.location.search).get('token');
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromRedirect = params.get('token');
+    const refreshTokenFromRedirect = params.get('refreshToken');
+
     if (tokenFromRedirect) {
       localStorage.setItem('token', tokenFromRedirect);
       setToken(tokenFromRedirect);
+      if (refreshTokenFromRedirect) {
+        localStorage.setItem('refreshToken', refreshTokenFromRedirect);
+      }
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
@@ -93,28 +143,38 @@ export function AuthProvider({ children }) {
     }
 
     let active = true;
-    fetch(`${API}/profile`, { headers: { Authorization: `Bearer ${currentToken}` } })
+    authenticatedFetch(`${API}/profile`)
       .then(res => (res.ok ? res.json() : Promise.reject()))
       .then(profile => {
         if (active) setUser(profile);
       })
       .catch(() => {
-        localStorage.removeItem('token');
-        setToken(null);
         if (active) setUser(null);
       });
 
     return () => {
       active = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loginWithGoogle = () => {
     window.location.href = 'http://localhost:5000/auth/google';
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const rf = localStorage.getItem('refreshToken');
+    if (rf) {
+      try {
+        await fetch(`${API}/auth/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: rf })
+        });
+      } catch {}
+    }
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
@@ -142,6 +202,7 @@ export function AuthProvider({ children }) {
         loginWithGoogle,
         logout,
         requireAuth,
+        authenticatedFetch,
         openLoginModal: (msg) => {
           setModalMessage(msg || '');
           setModalOpen(true);

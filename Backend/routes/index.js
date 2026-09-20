@@ -7,6 +7,7 @@ const submitRoutes = require('./submitRoutes');
 const userRoutes = require('./userRoutes');
 const learningRoutes = require('./learningRoutes');
 const healthRoutes = require('./healthRoutes');
+const auditRoutes = require('./auditRoutes');
 
 const router = express.Router();
 
@@ -17,6 +18,7 @@ function registerApiRoutes(r) {
   r.use('/run', runRoutes);
   r.use('/submit', submitRoutes);
   r.use('/learning', learningRoutes);
+  r.use('/admin/audit-logs', auditRoutes);
   r.use('/', userRoutes);
 }
 

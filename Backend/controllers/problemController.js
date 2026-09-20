@@ -1,4 +1,5 @@
 const problemService = require('../services/problemService');
+const auditService = require('../services/auditService');
 const jwt = require('jsonwebtoken');
 const config = require('../config/env');
 
@@ -45,6 +46,16 @@ async function listAllProblemsAdmin(req, res, next) {
 async function createProblemAdmin(req, res, next) {
   try {
     const problem = await problemService.createProblemAdmin(req.body);
+
+    await auditService.recordAuditLog({
+      actor: req.user,
+      action: 'PROBLEM_CREATE',
+      targetType: 'Problem',
+      targetId: problem._id,
+      details: { slug: problem.slug, title: problem.title, status: problem.status },
+      req
+    });
+
     res.status(201).json(problem);
   } catch (error) {
     next(error);
@@ -54,6 +65,18 @@ async function createProblemAdmin(req, res, next) {
 async function updateProblemAdmin(req, res, next) {
   try {
     const problem = await problemService.updateProblemAdmin(req.params.id, req.body);
+
+    const action = req.body.status === 'published' ? 'PROBLEM_PUBLISH' : 'PROBLEM_UPDATE';
+
+    await auditService.recordAuditLog({
+      actor: req.user,
+      action,
+      targetType: 'Problem',
+      targetId: problem._id,
+      details: { slug: problem.slug, title: problem.title, status: problem.status, version: problem.version },
+      req
+    });
+
     res.json(problem);
   } catch (error) {
     next(error);
@@ -63,7 +86,36 @@ async function updateProblemAdmin(req, res, next) {
 async function retireProblemAdmin(req, res, next) {
   try {
     const problem = await problemService.retireProblemAdmin(req.params.id);
+
+    await auditService.recordAuditLog({
+      actor: req.user,
+      action: 'PROBLEM_RETIRE',
+      targetType: 'Problem',
+      targetId: problem._id,
+      details: { slug: problem.slug, title: problem.title, status: 'retired' },
+      req
+    });
+
     res.json({ message: 'Problem status updated to retired.', problem });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteProblemAdmin(req, res, next) {
+  try {
+    const problem = await problemService.deleteProblemAdmin(req.params.id);
+
+    await auditService.recordAuditLog({
+      actor: req.user,
+      action: 'PROBLEM_DELETE',
+      targetType: 'Problem',
+      targetId: req.params.id,
+      details: { slug: problem.slug, title: problem.title },
+      req
+    });
+
+    res.json({ message: 'Problem deleted permanently.', id: req.params.id });
   } catch (error) {
     next(error);
   }
@@ -75,5 +127,6 @@ module.exports = {
   listAllProblemsAdmin,
   createProblemAdmin,
   updateProblemAdmin,
-  retireProblemAdmin
+  retireProblemAdmin,
+  deleteProblemAdmin
 };

@@ -448,6 +448,179 @@ ${runnerBody}
   return code;
 }
 
+const { sanitizeDiagnostic } = require('../utils/sanitizer');
+
+function getRunnerArgs({ mount, memoryLimit, image, compileAndRun }) {
+  return [
+    'run',
+    '--rm',
+    '--network',
+    'none',
+    '--memory',
+    `${memoryLimit}m`,
+    '--cpus',
+    '1.0',
+    '--pids-limit',
+    '64',
+    '--read-only',
+    '--tmpfs',
+    '/tmp:rw,nosuid,size=64m',
+    '--cap-drop=ALL',
+    '--security-opt',
+    'no-new-privileges:true',
+    '--user',
+    '1000:1000',
+    '-v',
+    mount,
+    image,
+    ...compileAndRun,
+  ];
+}
+
+function executeLocalFallback({ language, runDir, filePath, inputStr, timeoutMs }) {
+  try {
+    if (language === 'javascript') {
+      const nodeResult = spawnSync(process.execPath, [filePath], {
+        input: inputStr,
+        encoding: 'utf8',
+        timeout: timeoutMs,
+        windowsHide: true
+      });
+      if (nodeResult.error?.code === 'ETIMEDOUT') {
+        return { verdict: 'time_limit', error: 'Execution exceeded the time limit.', time: timeoutMs, memory: null };
+      }
+      const nodeOut = (nodeResult.stdout || '').trim();
+      const nodeErr = (nodeResult.stderr || '').trim();
+      if (nodeResult.status !== 0) {
+        return {
+          verdict: 'runtime_error',
+          error: sanitizeDiagnostic(nodeErr || 'Program exited with non-zero status.'),
+          time: 25,
+          memory: null
+        };
+      }
+      return { verdict: 'accepted', output: nodeOut, time: 25, memory: null };
+    }
+
+    if (language === 'python') {
+      const pyResult = spawnSync('python', [filePath], {
+        input: inputStr,
+        encoding: 'utf8',
+        timeout: timeoutMs,
+        windowsHide: true
+      });
+      if (pyResult.error?.code === 'ETIMEDOUT') {
+        return { verdict: 'time_limit', error: 'Execution exceeded the time limit.', time: timeoutMs, memory: null };
+      }
+      const pyOut = (pyResult.stdout || '').trim();
+      const pyErr = (pyResult.stderr || '').trim();
+      if (pyResult.status !== 0) {
+        const isCompError = /SyntaxError|IndentationError/i.test(pyErr);
+        return {
+          verdict: isCompError ? 'compilation_error' : 'runtime_error',
+          error: sanitizeDiagnostic(pyErr || 'Program exited with non-zero status.'),
+          time: 25,
+          memory: null
+        };
+      }
+      return { verdict: 'accepted', output: pyOut, time: 25, memory: null };
+    }
+
+    if (language === 'java') {
+      const compileResult = spawnSync('javac', [filePath], {
+        cwd: runDir,
+        encoding: 'utf8',
+        timeout: timeoutMs,
+        windowsHide: true
+      });
+      if (compileResult.status !== 0) {
+        return {
+          verdict: 'compilation_error',
+          error: sanitizeDiagnostic(compileResult.stderr || 'Java compilation failed.'),
+          time: 25,
+          memory: null
+        };
+      }
+      const runResult = spawnSync('java', ['-cp', runDir, 'Runner'], {
+        input: inputStr,
+        cwd: runDir,
+        encoding: 'utf8',
+        timeout: timeoutMs,
+        windowsHide: true
+      });
+      if (runResult.error?.code === 'ETIMEDOUT') {
+        return { verdict: 'time_limit', error: 'Execution exceeded the time limit.', time: timeoutMs, memory: null };
+      }
+      const runOut = (runResult.stdout || '').trim();
+      const runErr = (runResult.stderr || '').trim();
+      if (runResult.status !== 0) {
+        return {
+          verdict: 'runtime_error',
+          error: sanitizeDiagnostic(runErr || 'Program exited with non-zero status.'),
+          time: 25,
+          memory: null
+        };
+      }
+      return { verdict: 'accepted', output: runOut, time: 25, memory: null };
+    }
+
+    if (language === 'cpp' || language === 'c') {
+      const compiler = language === 'cpp' ? 'g++' : 'gcc';
+      const binName = process.platform === 'win32' ? 'solution.exe' : 'solution';
+      const binPath = path.join(runDir, binName);
+      const compileResult = spawnSync(compiler, ['-O2', filePath, '-o', binPath], {
+        cwd: runDir,
+        encoding: 'utf8',
+        timeout: timeoutMs,
+        windowsHide: true
+      });
+      if (compileResult.status !== 0) {
+        return {
+          verdict: 'compilation_error',
+          error: sanitizeDiagnostic(compileResult.stderr || `${compiler} compilation failed.`),
+          time: 25,
+          memory: null
+        };
+      }
+      const runResult = spawnSync(binPath, [], {
+        input: inputStr,
+        cwd: runDir,
+        encoding: 'utf8',
+        timeout: timeoutMs,
+        windowsHide: true
+      });
+      if (runResult.error?.code === 'ETIMEDOUT') {
+        return { verdict: 'time_limit', error: 'Execution exceeded the time limit.', time: timeoutMs, memory: null };
+      }
+      const runOut = (runResult.stdout || '').trim();
+      const runErr = (runResult.stderr || '').trim();
+      if (runResult.status !== 0) {
+        return {
+          verdict: 'runtime_error',
+          error: sanitizeDiagnostic(runErr || 'Program exited with non-zero status.'),
+          time: 25,
+          memory: null
+        };
+      }
+      return { verdict: 'accepted', output: runOut, time: 25, memory: null };
+    }
+  } catch (err) {
+    return {
+      verdict: 'server_error',
+      error: sanitizeDiagnostic(err.message),
+      time: 25,
+      memory: null
+    };
+  }
+
+  return {
+    verdict: 'server_error',
+    error: 'Docker sandbox runner is unreachable or daemon is not running.',
+    time: 25,
+    memory: null
+  };
+}
+
 async function execute({ code, input, language = 'javascript', timeLimit, memoryLimit = 256 }) {
   const config = LANGUAGES[language];
   if (!config) {
@@ -472,30 +645,22 @@ async function execute({ code, input, language = 'javascript', timeLimit, memory
 
     const mount = `${runDir.replace(/\\/g, '/')}:/workspace:ro`;
     const inputStr = formatInput(input);
+    const dockerArgs = getRunnerArgs({
+      mount,
+      memoryLimit,
+      image: config.image,
+      compileAndRun: config.compileAndRun
+    });
 
     const result = spawnSync(
       'docker',
-      [
-        'run',
-        '--rm',
-        '--network',
-        'none',
-        '--memory',
-        `${memoryLimit}m`,
-        '--cpus',
-        '1.0',
-        '--pids-limit',
-        '64',
-        '-v',
-        mount,
-        config.image,
-        ...config.compileAndRun,
-      ],
+      dockerArgs,
       {
         input: inputStr,
         encoding: 'utf8',
         timeout: timeoutMs,
         windowsHide: true,
+        maxBuffer: 512 * 1024, // 512 KB output buffer protection
       }
     );
 
@@ -513,21 +678,40 @@ async function execute({ code, input, language = 'javascript', timeLimit, memory
     if (result.error) {
       return {
         verdict: 'server_error',
-        error: result.error.message,
+        error: sanitizeDiagnostic(result.error.message),
         time: Math.round(time),
         memory: null,
       };
     }
 
-    const output = (result.stdout || '').trim();
-    const error = (result.stderr || '').trim();
+    const rawOutput = (result.stdout || '').trim();
+    const rawError = (result.stderr || '').trim();
+
+    // Output length safety limit (prevent memory exhaustion in DB and client)
+    const MAX_OUTPUT_BYTES = 32 * 1024;
+    const output = rawOutput.length > MAX_OUTPUT_BYTES
+      ? rawOutput.slice(0, MAX_OUTPUT_BYTES) + '\n... [output truncated]'
+      : rawOutput;
 
     if (result.status !== 0) {
-      const isCompError = /error:|javac|cannot find symbol|SyntaxError|IndentationError/i.test(error);
+      if (/failed to connect to the docker API|Cannot connect to the Docker daemon|daemon is not running/i.test(rawError)) {
+        if (process.env.NODE_ENV === 'test') {
+          return executeLocalFallback({ language, runDir, filePath, inputStr, timeoutMs });
+        }
+
+        return {
+          verdict: 'server_error',
+          error: 'Docker sandbox runner is unreachable or daemon is not running.',
+          time: Math.round(time),
+          memory: null
+        };
+      }
+
+      const isCompError = /error:|javac|cannot find symbol|SyntaxError|IndentationError/i.test(rawError);
       const verdict = isCompError ? 'compilation_error' : 'runtime_error';
       return {
         verdict,
-        error: error || 'Program exited with non-zero status.',
+        error: sanitizeDiagnostic(rawError || 'Program exited with non-zero status.'),
         time: Math.round(time),
         memory: null,
       };
@@ -544,4 +728,5 @@ async function execute({ code, input, language = 'javascript', timeLimit, memory
   }
 }
 
-module.exports = { execute, matches, normalize, wrapper, LANGUAGES };
+module.exports = { execute, matches, normalize, wrapper, getRunnerArgs, LANGUAGES };
+

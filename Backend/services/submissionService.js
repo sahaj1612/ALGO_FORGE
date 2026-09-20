@@ -41,11 +41,14 @@ async function createSubmission({ userId, problemId, code, language = 'javascrip
   });
 
   try {
-    await judgeQueue.add(
-      'judge-job',
-      { submissionId: submission._id.toString() },
-      { removeOnComplete: 200, removeOnFail: 200 }
-    );
+    await Promise.race([
+      judgeQueue.add(
+        'judge-job',
+        { submissionId: submission._id.toString() },
+        { removeOnComplete: 200, removeOnFail: 200 }
+      ),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Queue connection timeout')), 600))
+    ]);
   } catch (queueErr) {
     // If queue is temporarily offline (e.g. unit test environment), log and continue
     console.warn('Queue dispatch warning:', queueErr.message);

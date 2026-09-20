@@ -17,7 +17,10 @@ import {
   X,
   Sparkles,
   Cpu,
-  Save
+  Save,
+  Download,
+  Trash2,
+  ShieldAlert
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SiteHeader from '../components/SiteHeader';
@@ -59,9 +62,74 @@ export default function Profile() {
     preferredLanguage: 'javascript',
   });
 
+  const [exportingData, setExportingData] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleExportAccountData = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setExportingData(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API}/user/export`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to export account data.');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `algoforge-account-export-${user?._id || 'data'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setMessage('Account data exported successfully.');
+    } catch (err) {
+      setMessage(err.message || 'Error exporting account data.');
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to permanently delete your AlgoForge account? All submissions, statistics, and profile data will be permanently removed. This action cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    const doubleCheck = window.prompt(
+      'To confirm deletion, please type "DELETE" below:'
+    );
+    if (doubleCheck !== 'DELETE') {
+      alert('Account deletion cancelled. The confirmation phrase did not match.');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setDeletingAccount(true);
+    try {
+      const res = await fetch(`${API}/user/account`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || 'Failed to delete account.');
+      }
+      alert('Your account and personal data have been permanently erased.');
+      logout();
+      navigate('/');
+    } catch (err) {
+      alert(err.message || 'Failed to delete account.');
+      setDeletingAccount(false);
+    }
   };
 
   useEffect(() => {
@@ -653,6 +721,70 @@ export default function Profile() {
                     <p className="text-xl font-bold text-amber-400 mt-1">
                       {stats?.ranking || 'Top 0%'}
                     </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* PRIVACY & DATA RIGHTS (GDPR / CCPA) */}
+              <div className="border-t border-zinc-800 pt-6">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-4 flex items-center gap-2">
+                  <ShieldAlert size={14} className="text-red-400" />
+                  <span>Privacy & Data Management</span>
+                </h3>
+
+                <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-200">Export Your Personal Data</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        Download a machine-readable JSON archive containing your profile details and complete submission history.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleExportAccountData}
+                      disabled={exportingData}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-xs font-semibold text-zinc-200 transition active:scale-95 disabled:opacity-50"
+                    >
+                      {exportingData ? (
+                        <>
+                          <LoaderCircle size={14} className="animate-spin text-zinc-400" />
+                          <span>Preparing Export...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download size={14} className="text-zinc-400" />
+                          <span>Download Archive</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="border-t border-zinc-800/80 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-red-400">Right to Erasure (Delete Account)</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        Permanently purge your account, authentication credentials, solved records, and personal submissions.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDeleteAccount}
+                      disabled={deletingAccount}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-900/50 bg-red-950/30 hover:bg-red-900/40 text-xs font-semibold text-red-400 hover:text-red-300 transition active:scale-95 disabled:opacity-50"
+                    >
+                      {deletingAccount ? (
+                        <>
+                          <LoaderCircle size={14} className="animate-spin text-red-400" />
+                          <span>Deleting Account...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 size={14} className="text-red-400" />
+                          <span>Delete My Account</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>

@@ -112,6 +112,53 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /auth/refresh:
+    post:
+      summary: Rotate Access and Refresh Token Pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Rotated token pair
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      summary: Revoke Active Refresh Token Session
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Logged out successfully
+
   /problems:
     get:
       summary: List Published Problems
@@ -333,6 +380,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserStats'
+
+  /admin/audit-logs:
+    get:
+      summary: Query Audit Logs (Admin Only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: targetType
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cursor-paginated audit trail entries
+        '403':
+          description: Forbidden (Admin role required)
+
+  /user/export:
+    get:
+      summary: GDPR Account & Submission Data Export
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Structured JSON archive of personal user data and submission history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exportMetadata:
+                    type: object
+                  user:
+                    type: object
+                  submissions:
+                    type: array
+                    items:
+                      type: object
+
+  /user/account:
+    delete:
+      summary: GDPR Right to Erasure (Permanent Account & Data Purge)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User and all associated data permanently erased
 
 components:
   securitySchemes:

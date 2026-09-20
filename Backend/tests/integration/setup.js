@@ -36,7 +36,10 @@ async function stopTestServer() {
     server = null;
   }
   try {
-    await judgeQueue.close();
+    await Promise.race([
+      judgeQueue.close(),
+      new Promise((resolve) => setTimeout(resolve, 500))
+    ]);
   } catch {}
   await closeRedis();
   if (mongoose.connection.readyState !== 0) {

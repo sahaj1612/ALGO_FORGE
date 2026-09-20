@@ -1,8 +1,12 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Submission = require('../models/Submission');
+const RefreshToken = require('../models/RefreshToken');
 const statsService = require('../services/statsService');
+const auditService = require('../services/auditService');
 const config = require('../config/env');
 const { NotFoundError, BadRequestError } = require('../utils/errors');
+const { verifyImageMagicBytes } = require('../utils/sanitizer');
 
 async function getStats(req, res, next) {
   try {
@@ -54,13 +58,106 @@ async function updateProfile(req, res, next) {
 async function updatePicture(req, res, next) {
   try {
     const { picture } = req.body;
-    const isImageDataUrl = typeof picture === 'string' && /^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=]+$/i.test(picture);
-    if (!isImageDataUrl || picture.length > 2_800_000) {
-      throw new BadRequestError('Choose a PNG, JPEG, WebP, or GIF image smaller than 2 MB.');
+    if (!picture || typeof picture !== 'string') {
+      throw new BadRequestError('Profile picture data or URL is required.');
     }
+
+    // 1. Allow trusted external storage references (e.g. HTTPS storage object / OAuth avatar)
+    if (picture.startsWith('https://')) {
+      try {
+        const url = new URL(picture);
+        // Ensure valid URL
+        if (!url.hostname) throw new Error();
+      } catch {
+        throw new BadRequestError('Invalid profile picture URL.');
+      }
+    } else {
+      // 2. Binary Magic Number verification for base64 uploaded blobs
+      const verifiedMime = verifyImageMagicBytes(picture);
+      if (!verifiedMime) {
+        throw new BadRequestError('Invalid or unsupported image file. Must be a verified JPEG, PNG, WebP, or GIF image under 2MB. Executable, SVG, or script payloads are strictly forbidden.');
+      }
+    }
+
     const user = await User.findByIdAndUpdate(req.user.id, { picture }, { new: true }).select('-passwordHash');
     if (!user) throw new NotFoundError('User not found.');
     res.json(user);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GDPR / Privacy Data Portability: Export full account history & submissions
+ */
+async function exportAccountData(req, res, next) {
+  try {
+    const user = await User.findById(req.user.id).select('-passwordHash').lean();
+    if (!user) throw new NotFoundError('User not found.');
+
+    const submissions = await Submission.find({ userId: req.user.id })
+      .select('-__v')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const exportPayload = {
+      exportMetadata: {
+        exportedAt: new Date().toISOString(),
+        version: '1.0',
+        platform: 'AlgoForge'
+      },
+      user,
+      submissions,
+      totalSubmissions: submissions.length
+    };
+
+    await auditService.recordAuditLog({
+      actor: req.user,
+      action: 'ACCOUNT_EXPORT',
+      targetType: 'User',
+      targetId: req.user.id,
+      details: { exportSize: submissions.length },
+      req
+    });
+
+    res.setHeader('Content-Disposition', `attachment; filename="algoforge-account-${req.user.id}.json"`);
+    res.json(exportPayload);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GDPR Right to Erasure: Permanent account and personal data deletion
+ */
+async function deleteAccount(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+    if (!user) throw new NotFoundError('User not found.');
+
+    // Remove active refresh tokens
+    await RefreshToken.deleteMany({ userId });
+
+    // Clean up or anonymize user submissions
+    await Submission.deleteMany({ userId });
+
+    // Record audit log before deleting record
+    await auditService.recordAuditLog({
+      actor: req.user,
+      action: 'ACCOUNT_DELETE',
+      targetType: 'User',
+      targetId: userId,
+      details: { email: user.email },
+      req
+    });
+
+    // Delete user
+    await User.findByIdAndDelete(userId);
+
+    res.json({
+      message: 'Account and associated personal data deleted permanently.'
+    });
   } catch (error) {
     next(error);
   }
@@ -70,5 +167,7 @@ module.exports = {
   getStats,
   getProfile,
   updateProfile,
-  updatePicture
+  updatePicture,
+  exportAccountData,
+  deleteAccount
 };

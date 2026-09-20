@@ -20,6 +20,7 @@ AlgoForge delivers a high-performance, resilient coding practice environment wit
 - [Backup and Disaster Recovery](#backup-and-disaster-recovery)
 - [API Documentation & Contracts](#api-documentation--contracts)
 - [CI/CD Pipeline & Quality Gates](#cicd-pipeline--quality-gates)
+- [Security Architecture & Multi-Tenant Boundaries](#security-architecture--multi-tenant-boundaries)
 - [Supported Execution Environments](#supported-execution-environments)
 
 ---
@@ -259,6 +260,22 @@ AlgoForge utilizes GitHub Actions ([`.github/workflows/ci.yml`](.github/workflow
         ▼
  [5. Security Audit: npm audit & vulnerability scanning]
 ```
+
+---
+
+## Security Architecture & Multi-Tenant Boundaries
+
+AlgoForge implements defense-in-depth isolation for executing untrusted user programs and multi-tenant security boundaries in accordance with **Phase 4**:
+
+- **Hardened Runner**: Rootless execution (`--user 1000:1000`), read-only rootfs (`--read-only`), 64 MB tmpfs (`/tmp:rw,nosuid,size=64m`), dropped Linux capabilities (`--cap-drop=ALL`), `no-new-privileges:true`, and strict seccomp system call filtering.
+- **Air-Gapped Execution**: Execution containers run with `--network none` and no mounted Docker sockets or cloud credentials.
+- **Multi-Layer Limits**: Per-user concurrency limit (max 3 active jobs), global queue depth cap (500), body size limits (64 KB code, 10 KB testcase), and process execution output limits (512 KB buffer).
+- **Rate Limiting & Idempotency**: IP and user sliding-window rate limiters return HTTP 429 with standard `Retry-After` headers. `Idempotency-Key` headers prevent network retries from duplicating judge jobs.
+- **Token Rotation & Replay Detection**: Cryptographically signed 15-minute access tokens paired with single-use refresh token rotation and automated lineage invalidation upon replay detection.
+- **Role-Based Access Control & Auditing**: Immutable audit trails (`AuditLog`) for problem authoring, retirement, deletion, and GDPR data operations.
+- **Data Protection & Portability**: AES-256-GCM encrypted database backups, machine-readable personal data export (`GET /api/v1/user/export`), and complete GDPR right to erasure (`DELETE /api/v1/user/account`).
+
+For full details and threat models, see [docs/SECURITY.md](docs/SECURITY.md).
 
 ---
 

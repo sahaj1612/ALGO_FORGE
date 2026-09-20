@@ -304,7 +304,11 @@ export default function ProblemSolve() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Execution error');
+      if (!response.ok) {
+        const retryAfter = response.headers.get('Retry-After');
+        const msg = data.error?.message || data.message || 'Execution error';
+        throw new Error(retryAfter ? `${msg} (Retry after ${retryAfter}s)` : msg);
+      }
 
       setResults(data.results || []);
       const anyFailed = data.results?.some(r => r.status !== 'passed' && r.status !== 'accepted');
@@ -333,7 +337,15 @@ export default function ProblemSolve() {
     setResults([]);
 
     const token = localStorage.getItem('token');
-    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `idem-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      'Idempotency-Key': idempotencyKey
+    };
 
     try {
       const response = await fetch(`${API}/submit`, {
@@ -347,12 +359,17 @@ export default function ProblemSolve() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Submission failed');
+      if (!response.ok) {
+        const retryAfter = response.headers.get('Retry-After');
+        const msg = data.error?.message || data.message || 'Submission failed';
+        throw new Error(retryAfter ? `${msg} (Retry after ${retryAfter}s)` : msg);
+      }
 
+      const submissionId = data.id || data.submissionId;
       const problemKey = problem?.slug || problem?._id || id;
-      sessionStorage.setItem(`pending_sub_${problemKey}`, data.submissionId);
+      sessionStorage.setItem(`pending_sub_${problemKey}`, submissionId);
 
-      startPolling(data.submissionId, token);
+      startPolling(submissionId, token);
     } catch (err) {
       setVerdict(VERDICTS.SERVER_ERROR);
       setResults([

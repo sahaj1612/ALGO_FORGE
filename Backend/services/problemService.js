@@ -155,11 +155,26 @@ async function retireProblemAdmin(id) {
   return problem;
 }
 
+async function deleteProblemAdmin(id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new NotFoundError('Problem not found.');
+  }
+
+  const problem = await Problem.findByIdAndDelete(id);
+  if (!problem) {
+    throw new NotFoundError('Problem not found.');
+  }
+
+  return problem;
+}
+
 module.exports = {
   getProblems,
   getProblemBySlugOrId,
   getAllProblemsAdmin,
   createProblemAdmin,
   updateProblemAdmin,
-  retireProblemAdmin
+  retireProblemAdmin,
+  deleteProblemAdmin
 };
+

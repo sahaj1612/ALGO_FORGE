@@ -9,6 +9,7 @@ const cors = require('cors');
 const User = require('./models/User');
 const { apiRouter, healthRoutes } = require('./routes/index');
 const requestIdMiddleware = require('./middleware/requestId');
+const securityHeaders = require('./middleware/securityHeaders');
 const errorHandler = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 
@@ -17,12 +18,27 @@ const app = express();
 // 1. Correlation ID
 app.use(requestIdMiddleware);
 
-// 2. Body Parser & Security Limits
+// 2. Security Headers (HSTS, CSP, nosniff, frame denial)
+app.use(securityHeaders);
+
+// 3. Body Parser & Strict Allowlist CORS
 app.use(express.json({ limit: config.bodyLimit }));
-app.use(cors({ origin: config.clientUrl, credentials: true }));
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow non-browser requests (server-to-server, curl, tests) without origin header
+    if (!origin) return callback(null, true);
+    if (config.allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Origin '${origin}' is not allowed by CORS policy.`));
+  },
+  credentials: true
+}));
+
 app.use(passport.initialize());
 
-// 3. Request Logging (Structured JSON, sanitizing passwords/tokens/code)
+// 4. Request Logging (Structured JSON, sanitizing passwords/tokens/code)
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
@@ -37,15 +53,19 @@ app.use((req, res, next) => {
   next();
 });
 
-// 4. Database Connection
-mongoose.connect(config.mongodbUri)
-  .then(() => logger.info('MongoDB connected'))
-  .catch(error => {
-    logger.error(`MongoDB connection failed: ${error.message}`);
-    process.exit(1);
-  });
+// 5. Database Connection
+if (mongoose.connection.readyState === 0) {
+  mongoose.connect(config.mongodbUri)
+    .then(() => logger.info('MongoDB connected'))
+    .catch(error => {
+      logger.error(`MongoDB connection failed: ${error.message}`);
+      if (process.env.NODE_ENV !== 'test') {
+        process.exit(1);
+      }
+    });
+}
 
-// 5. Google OAuth
+// 6. Google OAuth
 if (config.isGoogleConfigured) {
   passport.use(new GoogleStrategy({
     clientID: config.googleClientId,
@@ -78,19 +98,26 @@ app.get('/auth/google', (req, res, next) =>
 
 app.get('/auth/google/callback', (req, res, next) =>
   config.isGoogleConfigured
-    ? passport.authenticate('google', { session: false })(req, res, () =>
-        res.redirect(`${config.clientUrl}/dashboard?token=${jwt.sign({ id: req.user._id }, config.jwtSecret, { expiresIn: '7d' })}`)
-      )
+    ? passport.authenticate('google', { session: false })(req, res, async () => {
+        try {
+          const { issueRefreshToken, generateToken } = require('./services/authService');
+          const accessToken = generateToken(req.user._id);
+          const refreshToken = await issueRefreshToken(req.user._id, req);
+          res.redirect(`${config.clientUrl}/dashboard?token=${accessToken}&refreshToken=${refreshToken}`);
+        } catch {
+          res.redirect(`${config.clientUrl}/login?error=oauth_failed`);
+        }
+      })
     : res.status(503).json({ message: 'Google OAuth is not configured.' })
 );
 
-// 6. Health Check Endpoints (/health, /health/live, /health/ready)
+// 7. Health Check Endpoints (/health, /health/live, /health/ready)
 app.use('/health', healthRoutes);
 
-// 7. API Routes (mounted on /api and /api/v1)
+// 8. API Routes (mounted on /api and /api/v1)
 app.use('/api', apiRouter);
 
-// 8. 404 Handler for undefined routes
+// 9. 404 Handler for undefined routes
 app.use((req, res, next) => {
   res.status(404).json({
     error: {
@@ -102,7 +129,7 @@ app.use((req, res, next) => {
   });
 });
 
-// 9. Unified Typed Error Handler
+// 10. Unified Typed Error Handler
 app.use(errorHandler);
 
 if (require.main === module) {
