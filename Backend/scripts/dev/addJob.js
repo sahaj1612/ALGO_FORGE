@@ -1,4 +1,4 @@
-const testQueue = require("./queues/testQueue");
+const testQueue = require("../../queues/testQueue");
 
 async function add() {
   await testQueue.add("demo-job", {

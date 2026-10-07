@@ -1,10 +1,10 @@
 # AlgoForge
 
-> A modern, production-grade algorithm practice and competitive programming platform with sandboxed multi-language code execution, asynchronous queue-driven judging, and comprehensive engineering quality gates.
+> A full-stack algorithm practice platform with asynchronous judging, multi-language code execution, and engineering quality checks.
 
 ![AlgoForge homepage](docs/algoforge-home.png)
 
-AlgoForge delivers a high-performance, resilient coding practice environment with an intuitive React/Vite interface, an Express layered backend, an isolated Dockerized code execution sandbox, and BullMQ/Redis worker queues.
+AlgoForge combines a React/Vite interface, an Express API, MongoDB persistence, and BullMQ/Redis workers. Code execution uses a separately configured Docker-compatible sandbox executor.
 
 ---
 
@@ -22,6 +22,7 @@ AlgoForge delivers a high-performance, resilient coding practice environment wit
 - [CI/CD Pipeline & Quality Gates](#cicd-pipeline--quality-gates)
 - [Security Architecture & Multi-Tenant Boundaries](#security-architecture--multi-tenant-boundaries)
 - [Supported Execution Environments](#supported-execution-environments)
+- [Project Structure & Contributor Guides](#project-structure--contributor-guides)
 
 ---
 
@@ -57,14 +58,14 @@ AlgoForge follows a strict **layered enterprise architecture** to ensure testabi
                                        │     BullMQ Judge Worker Engine    │
                                        │     (workers/judgeWorker.js)      │
                                        └─────────────────┬─────────────────┘
-                                                         │ Docker socket
+                                       │ Configured sandbox executor
                                                          ▼
                                        ┌───────────────────────────────────┐
                                        │ Docker Sandboxed Runner Container │
                                        │ (Node, Python, Java, C++, C)      │
                                        │ - CPU & Memory limits (512MB)     │
                                        │ - Read-only filesystem & drop caps│
-                                       │ - Isolated bridge network (none)  │
+                                       │ - Network disabled               │
                                        └───────────────────────────────────┘
 ```
 
@@ -81,7 +82,7 @@ AlgoForge follows a strict **layered enterprise architecture** to ensure testabi
 
 ### Option A: One-Command Docker Compose (Recommended)
 
-To spin up the entire production-grade stack (MongoDB, Redis, API, Worker, and Frontend) in one command:
+To start the local application stack (MongoDB, Redis, API, workers, and Frontend):
 
 ```bash
 # Clone the repository
@@ -99,6 +100,8 @@ docker compose up -d --build
 - **API Server**: [http://localhost:5000](http://localhost:5000)
 - **Health Checks**: [http://localhost:5000/api/v1/health/live](http://localhost:5000/api/v1/health/live) and [http://localhost:5000/api/v1/health/ready](http://localhost:5000/api/v1/health/ready)
 
+Docker Compose starts the app services, but code execution also needs a reachable Docker-compatible sandbox executor configured with `SANDBOX_DOCKER_HOST`. See the [local development guide](docs/LOCAL_DEVELOPMENT.md) for setup details and limitations.
+
 To shut down:
 ```bash
 docker compose down
@@ -107,6 +110,8 @@ docker compose down
 ---
 
 ### Option B: Local Development
+
+For the complete setup, service commands, and environment notes, follow [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md).
 
 #### Prerequisites
 - Node.js 20+
@@ -149,7 +154,7 @@ AlgoForge validates all required environment variables upon server startup via `
 | :--- | :--- | :--- |
 | `PORT` | API server listening port | `5000` |
 | `NODE_ENV` | Environment mode (`development`, `test`, `production`) | `development` |
-| `MONGO_URI` | MongoDB connection URI | `mongodb://127.0.0.1:27017/algoforge` |
+| `MONGODB_URI` | MongoDB connection URI | `mongodb://127.0.0.1:27017/algoforge` |
 | `REDIS_HOST` | Redis hostname | `127.0.0.1` |
 | `REDIS_PORT` | Redis port | `6379` |
 | `JWT_SECRET` | Secret key for signing JSON Web Tokens | Required |
@@ -288,6 +293,17 @@ For full details and threat models, see [docs/SECURITY.md](docs/SECURITY.md).
 | **Java** | OpenJDK 17 | Heap capped (`-Xmx256m`), security manager |
 | **C++** | GCC 12 (g++ -O2) | Isolated Linux container, resource capped |
 | **C** | GCC 12 (gcc -O2) | Isolated Linux container, resource capped |
+
+---
+
+## Project Structure & Contributor Guides
+
+- [Project structure](docs/PROJECT_STRUCTURE.md): directory map and guidance on where application code, scripts, tests, and documentation belong.
+- [Local development](docs/LOCAL_DEVELOPMENT.md): prerequisites and commands for running the app locally or with Docker Compose.
+- [Security](docs/SECURITY.md): execution isolation and security boundaries.
+- [Backup and restore](docs/BACKUP_RESTORE.md): database backup and recovery procedures.
+- [Operations runbooks](docs/RUNBOOKS.md) and [alerting](docs/ALERTING.md): operational response guidance.
+- [OpenAPI contract](docs/openapi.yaml): API specification.
 
 ---
 

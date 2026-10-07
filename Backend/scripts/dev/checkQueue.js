@@ -1,4 +1,4 @@
-const judgeQueue = require("./queues/judgeQueue");
+const judgeQueue = require("../../queues/judgeQueue");
 
 async function check(){
   const jobs = await judgeQueue.getWaiting();

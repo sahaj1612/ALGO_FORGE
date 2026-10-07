@@ -1,8 +1,9 @@
 // showProblems.js
 const mongoose = require("mongoose");
-const Problem = require("./models/Problem");
+const Problem = require("../../models/Problem");
+const config = require("../../config/env");
 
-mongoose.connect("mongodb://127.0.0.1:27017/algoforge")
+mongoose.connect(config.mongodbUri)
 .then(async () => {
 
   const problems = await Problem.find();
