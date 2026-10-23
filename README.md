@@ -307,6 +307,12 @@ For full details and threat models, see [docs/SECURITY.md](docs/SECURITY.md).
 
 ---
 
+## Author & Copyright
+
+Created and maintained by [Sahaj (@sahaj1612)](https://github.com/sahaj1612).
+
+Copyright © 2026 Sahaj. All rights reserved, except where the existing ISC License grants permission.
+
 ## License
 
 This project is licensed under the ISC License.
