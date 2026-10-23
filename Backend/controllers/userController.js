@@ -96,7 +96,9 @@ async function exportAccountData(req, res, next) {
     if (!user) throw new NotFoundError('User not found.');
 
     const submissions = await Submission.find({ userId: req.user.id })
-      .select('-__v')
+      // A portability export includes the user's work, but never judge-only
+      // hidden tests preserved in an immutable submission snapshot.
+      .select('-__v -problemSnapshot')
       .sort({ createdAt: -1 })
       .lean();
 

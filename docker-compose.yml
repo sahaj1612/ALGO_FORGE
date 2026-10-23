@@ -19,6 +19,7 @@ services:
     image: redis:7-alpine
     container_name: algoforge-redis
     restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
     volumes:
@@ -43,7 +44,7 @@ services:
       - MONGODB_URI=mongodb://mongodb:27017/algoforge
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=algoforge-production-docker-secret-change-in-prod-2026
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the deployment secret store}
       - CLIENT_URL=http://localhost:5173
     depends_on:
       mongodb:
@@ -51,20 +52,54 @@ services:
       redis:
         condition: service_healthy
 
-  worker:
+  worker-submit:
     build:
       context: ./Backend
       dockerfile: Dockerfile.worker
-    container_name: algoforge-worker
+    container_name: algoforge-worker-submit
     restart: unless-stopped
     environment:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://mongodb:27017/algoforge
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=algoforge-production-docker-secret-change-in-prod-2026
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the deployment secret store}
+      # A mutually authenticated remote executor is required in production.
+      # Do not expose the host Docker socket to a credentials-bearing worker.
+      - DOCKER_HOST=${SANDBOX_DOCKER_HOST:-}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-run:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.run-worker
+    container_name: algoforge-worker-run
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/algoforge
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the deployment secret store}
+      - DOCKER_HOST=${SANDBOX_DOCKER_HOST:-}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       mongodb:
         condition: service_healthy

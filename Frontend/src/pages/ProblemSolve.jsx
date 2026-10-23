@@ -6,11 +6,6 @@ import {
   Lightbulb,
   History,
   Tag,
-  Lock,
-  ThumbsUp,
-  ThumbsDown,
-  Bookmark,
-  Share2,
   Code,
   AlignLeft,
   RotateCcw,
@@ -54,6 +49,10 @@ export default function ProblemSolve() {
   const { user } = useAuth();
 
   const [problem, setProblem] = useState(null);
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || localStorage.getItem('algoforge-theme') || 'dark');
+  const [problemLoadStatus, setProblemLoadStatus] = useState('loading');
+  const [problemLoadError, setProblemLoadError] = useState('');
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [language, setLanguage] = useState(() => user?.preferredLanguage || 'javascript');
   const [code, setCode] = useState('');
 
@@ -68,6 +67,8 @@ export default function ProblemSolve() {
   const [verdict, setVerdict] = useState('');
   const [busy, setBusy] = useState(false);
   const [executionMetrics, setExecutionMetrics] = useState(null);
+  const [terminalHeight, setTerminalHeight] = useState(260);
+  const [isResizingTerminal, setIsResizingTerminal] = useState(false);
 
   // Notes state
   const [noteContent, setNoteContent] = useState('');
@@ -78,12 +79,48 @@ export default function ProblemSolve() {
   const [problemSubmissions, setProblemSubmissions] = useState([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
-  // Social & Learning states
-  const [likes, setLikes] = useState(142);
-  const [hasLiked, setHasLiked] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
-
   const editorRef = useRef(null);
+  const terminalResizeRef = useRef(null);
+  const codePanelRef = useRef(null);
+
+  const getMaxTerminalHeight = () => {
+    const panel = codePanelRef.current;
+    if (!panel) return Math.max(180, Math.min(650, window.innerHeight - 220));
+    const toolbarHeight = panel.querySelector('.af-code-toolbar')?.offsetHeight || 54;
+    const dividerHeight = panel.querySelector('.af-terminal-resize-handle')?.offsetHeight || 10;
+    const minimumEditorHeight = 140;
+    return Math.max(180, panel.clientHeight - toolbarHeight - dividerHeight - minimumEditorHeight);
+  };
+
+  useEffect(() => {
+    if (!isResizingTerminal) return undefined;
+
+    const handlePointerMove = event => {
+      if (!terminalResizeRef.current) return;
+      const { startY, startHeight } = terminalResizeRef.current;
+      const maxHeight = getMaxTerminalHeight();
+      setTerminalHeight(Math.max(180, Math.min(maxHeight, startHeight + startY - event.clientY)));
+    };
+    const handlePointerUp = () => {
+      terminalResizeRef.current = null;
+      setIsResizingTerminal(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, [isResizingTerminal]);
+
+  useEffect(() => {
+    const handleThemeChange = event => setTheme(event.detail);
+    window.addEventListener('algoforge-theme-change', handleThemeChange);
+    return () => window.removeEventListener('algoforge-theme-change', handleThemeChange);
+  }, []);
 
   // Poll controller ref to avoid duplicate polling loops
   const pollTimerRef = useRef(null);
@@ -154,67 +191,89 @@ export default function ProblemSolve() {
     const token = localStorage.getItem('token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const problemIdentifier = id || 'find-maximum-element';
+    const controller = new AbortController();
+    let didTimeout = false;
+    const timeout = window.setTimeout(() => {
+      didTimeout = true;
+      controller.abort();
+    }, 15000);
 
-    fetch(`${API}/problems/${problemIdentifier}`, { headers })
-      .then(res => (res.ok ? res.json() : Promise.reject()))
-      .then(p => {
-        if (p && (p._id || p.title)) {
-          setProblem(p);
-          const defaultStarter = getStarterCode(p, language);
-          const saved = localStorage.getItem(`draft:${p.slug || p._id}:${language}`);
-          setCode(saved || defaultStarter);
+    setProblem(null);
+    setCode('');
+    setProblemLoadError('');
+    setProblemLoadStatus('loading');
 
-          if (p.testcases && p.testcases.length > 0) {
-            setCustomTestcases(
-              p.testcases.map(tc =>
-                typeof tc.input === 'object' ? JSON.stringify(tc.input) : String(tc.input)
-              )
-            );
-          }
-
-          // Log viewed problem
-          if (token && p._id) {
-            fetch(`${API}/learning/viewed/${p._id}`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token}` }
-            }).catch(() => {});
-
-            // Fetch note
-            fetch(`${API}/learning/notes/${p._id}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            })
-              .then(r => (r.ok ? r.json() : null))
-              .then(d => {
-                if (d && d.content) setNoteContent(d.content);
-              })
-              .catch(() => {});
-
-            // Fetch bookmarks
-            fetch(`${API}/learning/bookmarks`, {
-              headers: { Authorization: `Bearer ${token}` }
-            })
-              .then(r => (r.ok ? r.json() : []))
-              .then(bms => {
-                const isBm = Array.isArray(bms) && bms.some(b => (b._id || b) === p._id);
-                setBookmarked(isBm);
-              })
-              .catch(() => {});
-          }
-
-          // Browser refresh state recovery (Phase 2 Definition of Done)
-          const pendingSub = sessionStorage.getItem(`pending_sub_${p.slug || p._id || id}`);
-          if (pendingSub && token) {
-            startPolling(pendingSub, token);
-          }
+    const loadProblem = async () => {
+      try {
+        const response = await fetch(`${API}/problems/${encodeURIComponent(problemIdentifier)}`, {
+          headers,
+          signal: controller.signal,
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.error?.message || payload?.message || `Problem request failed (${response.status}).`);
         }
-      })
-      .catch(() => {});
+
+        const p = payload?.problem || payload?.data || payload;
+        if (!p || (!p._id && !p.title)) {
+          throw new Error('The server returned an invalid problem response.');
+        }
+
+        setProblem(p);
+        const defaultStarter = getStarterCode(p, language);
+        const saved = localStorage.getItem(`draft:${p.slug || p._id}:${language}`);
+        setCode(saved || defaultStarter);
+        setProblemLoadStatus('ready');
+
+        if (p.testcases && p.testcases.length > 0) {
+          setCustomTestcases(
+            p.testcases.map(tc =>
+              typeof tc.input === 'object' ? JSON.stringify(tc.input) : String(tc.input)
+            )
+          );
+        }
+
+        if (token && p._id) {
+          fetch(`${API}/learning/viewed/${p._id}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` }
+          }).catch(() => {});
+
+          fetch(`${API}/learning/notes/${p._id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+            .then(r => (r.ok ? r.json() : null))
+            .then(d => {
+              if (d && d.content) setNoteContent(d.content);
+            })
+            .catch(() => {});
+
+        }
+
+        const pendingSub = sessionStorage.getItem(`pending_sub_${p.slug || p._id || id}`);
+        if (pendingSub && token) startPolling(pendingSub, token);
+      } catch (error) {
+        if (controller.signal.aborted && !didTimeout) return;
+        if (didTimeout) {
+          setProblemLoadError('The request timed out. Check that the AlgoForge API and database are running, then try again.');
+        } else {
+          setProblemLoadError(error.message || 'Could not load this problem. Check that the API is running, then try again.');
+        }
+        setProblemLoadStatus('error');
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    };
+
+    loadProblem();
 
     return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, loadAttempt]);
 
   useEffect(() => {
     if (activeLeftTab === 'submissions' && problem?._id) {
@@ -242,19 +301,6 @@ export default function ProblemSolve() {
     if (editorRef.current) {
       editorRef.current.setValue(defaultCode);
     }
-  };
-
-  const toggleBookmark = async () => {
-    const token = localStorage.getItem('token');
-    if (!token || !problem?._id) return;
-    try {
-      const res = await fetch(`${API}/learning/bookmarks/${problem._id}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setBookmarked(Boolean(data.bookmarked));
-    } catch {}
   };
 
   const saveNote = async () => {
@@ -406,25 +452,25 @@ export default function ProblemSolve() {
   };
 
   const activeProblem = problem || {
-    title: 'Loading Problem...',
+    title: problemLoadStatus === 'error' ? 'Problem unavailable' : 'Loading Problem...',
     difficulty: 'Easy',
     topic: 'Arrays',
-    description: 'Loading problem contract and constraints...',
+    description: problemLoadError || 'Loading problem contract and constraints...',
     constraints: '',
     examples: []
   };
 
   return (
-    <div className="flex flex-col h-screen bg-black text-zinc-100 selection:bg-red-500 selection:text-white overflow-hidden font-sans">
+    <div className="af-page af-problem-solve flex flex-col h-screen bg-black text-zinc-100 selection:bg-red-500 selection:text-white overflow-hidden font-sans">
       <SiteHeader />
 
       {/* Main 2-Panel Workspace */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 p-2 bg-black overflow-hidden">
+      <div className="af-workspace flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 p-2 bg-black overflow-hidden">
         
         {/* LEFT PANEL */}
-        <div className="flex flex-col bg-black rounded-xl border border-zinc-900 overflow-hidden shadow-2xl">
+        <div className="af-surface-panel flex flex-col bg-black rounded-xl border border-zinc-900 overflow-hidden shadow-2xl">
           {/* Top Tabs Bar */}
-          <div className="flex items-center justify-between px-3 py-2 bg-[#0a0a0a] border-b border-zinc-900 text-xs font-medium">
+          <div className="af-workspace-toolbar flex items-center justify-between px-3 py-2 bg-[#0a0a0a] border-b border-zinc-900 text-xs font-medium">
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setActiveLeftTab('description')}
@@ -452,7 +498,7 @@ export default function ProblemSolve() {
                   activeLeftTab === 'notes' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                <Lightbulb size={14} className="text-emerald-400" />
+                <Lightbulb size={14} className="text-red-400" />
                 <span>Notes</span>
               </button>
 
@@ -475,7 +521,7 @@ export default function ProblemSolve() {
           </div>
 
           {/* Left Panel Content */}
-          <div className="flex-1 overflow-y-auto p-6 text-sm text-zinc-300 leading-relaxed scrollbar-thin scrollbar-thumb-zinc-800 bg-black">
+          <div className="af-workspace-scroll flex-1 overflow-y-auto p-6 text-sm text-zinc-300 leading-relaxed scrollbar-thin scrollbar-thumb-zinc-800 bg-black">
             {activeLeftTab === 'description' && (
               <div className="space-y-6">
                 <div>
@@ -487,7 +533,7 @@ export default function ProblemSolve() {
                     <span
                       className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
                         activeProblem.difficulty === 'Easy'
-                          ? 'bg-teal-500/10 text-[#00b8a3] border-teal-500/30'
+                          ? 'af-easy-badge'
                           : activeProblem.difficulty === 'Medium'
                           ? 'bg-amber-500/10 text-[#ffc01e] border-amber-500/30'
                           : 'bg-rose-500/10 text-[#ef476f] border-rose-500/30'
@@ -501,9 +547,6 @@ export default function ProblemSolve() {
                       <span>{activeProblem.topic || 'Arrays'}</span>
                     </span>
 
-                    <span className="text-xs text-zinc-500 font-mono">
-                      v{activeProblem.version || 1}
-                    </span>
                   </div>
                 </div>
 
@@ -511,6 +554,26 @@ export default function ProblemSolve() {
                 <div className="text-zinc-200 leading-relaxed whitespace-pre-wrap">
                   {activeProblem.description}
                 </div>
+
+                {problemLoadStatus === 'loading' && (
+                  <div className="flex items-center gap-2 text-zinc-400" role="status">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Loading problem details…</span>
+                  </div>
+                )}
+
+                {problemLoadStatus === 'error' && (
+                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4" role="alert">
+                    <p className="text-sm text-rose-300">{problemLoadError}</p>
+                    <button
+                      type="button"
+                      onClick={() => setLoadAttempt(attempt => attempt + 1)}
+                      className="mt-3 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-100 transition hover:border-red-400 hover:text-red-300"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )}
 
                 {/* Examples */}
                 {activeProblem.examples && activeProblem.examples.length > 0 && (
@@ -544,7 +607,13 @@ export default function ProblemSolve() {
                   <div className="space-y-2 pt-2">
                     <p className="font-bold text-white text-sm">Constraints:</p>
                     <div className="font-mono text-xs text-zinc-300 bg-[#1e1e1e] p-3.5 rounded-xl border border-zinc-800 whitespace-pre-wrap">
-                      {activeProblem.constraints}
+                      {String(activeProblem.constraints).split(/\s*,\s*/).map((constraint, index) => (
+                        <div key={`${index}-${constraint}`}>
+                          {constraint.replace(/\^(\d+)/g, (_, exponent) =>
+                            exponent.replace(/\d/g, digit => '⁰¹²³⁴⁵⁶⁷⁸⁹'[Number(digit)])
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -622,7 +691,7 @@ export default function ProblemSolve() {
                         <div className="flex items-center gap-3">
                           <span
                             className={`font-bold capitalize ${
-                              sub.status === 'accepted' ? 'text-emerald-400' : 'text-rose-400'
+                              sub.status === 'accepted' ? 'text-red-400' : 'text-rose-400'
                             }`}
                           >
                             {sub.status.replace(/_/g, ' ')}
@@ -641,45 +710,14 @@ export default function ProblemSolve() {
             )}
           </div>
 
-          {/* Left Footer Bar */}
-          <div className="flex items-center justify-between px-4 py-2.5 bg-[#0a0a0a] border-t border-zinc-900 text-xs text-zinc-400">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => {
-                  setLikes(prev => (hasLiked ? prev - 1 : prev + 1));
-                  setHasLiked(!hasLiked);
-                }}
-                className={`flex items-center gap-1.5 transition ${
-                  hasLiked ? 'text-blue-400 font-bold' : 'hover:text-zinc-200'
-                }`}
-              >
-                <ThumbsUp size={14} />
-                <span>{likes}</span>
-              </button>
-
-              <button
-                onClick={toggleBookmark}
-                title={bookmarked ? 'Remove Bookmark' : 'Bookmark Problem'}
-                className={`flex items-center gap-1.5 transition ${bookmarked ? 'text-amber-400' : 'hover:text-zinc-200'}`}
-              >
-                <Bookmark size={14} fill={bookmarked ? 'currentColor' : 'none'} />
-                <span>{bookmarked ? 'Bookmarked' : 'Bookmark'}</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-zinc-400 text-xs">Docker Sandbox Online</span>
-            </div>
-          </div>
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="flex flex-col bg-[#262626] rounded-xl border border-zinc-800 overflow-hidden shadow-2xl">
+        <div ref={codePanelRef} className="af-code-panel flex flex-col bg-[#262626] rounded-xl border border-zinc-800 overflow-hidden shadow-2xl">
           {/* Header Bar */}
-          <div className="flex items-center justify-between px-4 py-2 bg-[#1f1f1f] border-b border-zinc-800 text-xs">
+          <div className="af-code-toolbar flex items-center justify-between px-4 py-2 bg-[#1f1f1f] border-b border-zinc-800 text-xs">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5 font-bold text-emerald-400">
+              <span className="flex items-center gap-1.5 font-bold text-red-400">
                 <Code size={14} />
                 <span>Code</span>
               </span>
@@ -699,13 +737,18 @@ export default function ProblemSolve() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-1 text-zinc-500 text-xs">
-                <Lock size={11} />
-                <span>Isolated Sandbox</span>
-              </div>
             </div>
 
             <div className="flex items-center gap-3 text-zinc-400">
+              <button
+                disabled={busy || !problem}
+                onClick={handleRunCode}
+                className="af-run-button flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50 active:scale-95"
+                title="Run code"
+              >
+                <Play size={13} fill="currentColor" />
+                <span>Run</span>
+              </button>
               <button
                 onClick={() => {
                   if (editorRef.current) {
@@ -729,12 +772,12 @@ export default function ProblemSolve() {
           </div>
 
           {/* Monaco Code Editor */}
-          <div className="flex-1 min-h-[320px] relative bg-[#262626]">
+          <div className="af-code-canvas flex-1 min-h-[320px] relative bg-[#262626]">
             <Editor
               height="100%"
               language={getMonacoLang()}
               beforeMount={handleEditorWillMount}
-              theme="algoforge-grey"
+              theme={theme === 'light' ? 'vs' : 'algoforge-grey'}
               value={code}
               onChange={val => setCode(val || '')}
               onMount={editor => {
@@ -754,10 +797,34 @@ export default function ProblemSolve() {
             />
           </div>
 
+          <div
+            className="af-terminal-resize-handle"
+            role="separator"
+            aria-label="Resize testcase and test result panel"
+            aria-orientation="horizontal"
+            aria-valuemin={180}
+            aria-valuemax={getMaxTerminalHeight()}
+            aria-valuenow={terminalHeight}
+            tabIndex={0}
+            onPointerDown={event => {
+              event.preventDefault();
+              terminalResizeRef.current = { startY: event.clientY, startHeight: terminalHeight };
+              setIsResizingTerminal(true);
+            }}
+            onKeyDown={event => {
+              if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+              event.preventDefault();
+              const maxHeight = getMaxTerminalHeight();
+              setTerminalHeight(height => Math.max(180, Math.min(maxHeight, height + (event.key === 'ArrowUp' ? 32 : -32))));
+            }}
+          >
+            <span />
+          </div>
+
           {/* Bottom Testcase & Results Terminal Panel */}
-          <div className="border-t border-zinc-800 bg-[#1e1e1e] flex flex-col">
+          <div className="af-terminal border-t border-zinc-800 bg-[#1e1e1e] flex flex-col" style={{ height: terminalHeight, flex: '0 0 auto' }}>
             {/* Tabs Header */}
-            <div className="flex items-center justify-between px-4 py-2 bg-[#1f1f1f] border-b border-zinc-800 text-xs">
+            <div className="af-terminal-toolbar flex items-center justify-between px-4 py-2 bg-[#1f1f1f] border-b border-zinc-800 text-xs">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setActiveBottomTab('testcase')}
@@ -767,7 +834,7 @@ export default function ProblemSolve() {
                       : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
                   }`}
                 >
-                  <CheckSquare size={14} className={activeBottomTab === 'testcase' ? 'text-emerald-400' : ''} />
+                  <CheckSquare size={14} className={activeBottomTab === 'testcase' ? 'text-red-400' : ''} />
                   <span>Testcase</span>
                 </button>
 
@@ -787,12 +854,12 @@ export default function ProblemSolve() {
               {verdict && (
                 <div className="flex items-center gap-1.5 text-xs font-bold">
                   {verdict === 'accepted' ? (
-                    <span className="text-emerald-400 flex items-center gap-1">
+                    <span className="text-red-400 flex items-center gap-1">
                       <CheckCircle2 size={13} /> Accepted
                     </span>
                   ) : verdict === 'running' || verdict === 'pending' ? (
                     <span className="text-amber-400 flex items-center gap-1">
-                      <Loader2 size={13} className="animate-spin" /> Evaluating in Sandbox...
+                      <Loader2 size={13} className="animate-spin" /> Evaluating...
                     </span>
                   ) : verdict === 'compilation_error' ? (
                     <span className="text-rose-400 flex items-center gap-1">
@@ -815,7 +882,7 @@ export default function ProblemSolve() {
               )}
             </div>
 
-            <div className="p-4 max-h-48 min-h-[120px] overflow-y-auto text-xs font-mono bg-[#222222]">
+            <div className="af-terminal-body flex-1 min-h-0 p-4 overflow-y-auto text-xs font-mono bg-[#222222]">
               {activeBottomTab === 'testcase' ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
@@ -865,7 +932,7 @@ export default function ProblemSolve() {
                   {busy ? (
                     <div className="flex items-center justify-center py-6 text-zinc-400 gap-2 font-sans">
                       <Loader2 size={18} className="animate-spin text-red-500" />
-                      <span>Judging execution in Docker sandbox...</span>
+                      <span>Running...</span>
                     </div>
                   ) : results.length === 0 ? (
                     <p className="text-zinc-500 font-sans">Click &quot;Run&quot; or &quot;Submit&quot; to test your code.</p>
@@ -883,7 +950,7 @@ export default function ProblemSolve() {
                             <span className="font-bold text-white">Case {res.ordinal || i + 1}</span>
                             <span
                               className={`font-semibold ${
-                                res.status === 'passed' || res.status === 'accepted' ? 'text-emerald-400' : 'text-rose-400'
+                                res.status === 'passed' || res.status === 'accepted' ? 'text-red-400' : 'text-rose-400'
                               }`}
                             >
                               {res.status === 'passed' || res.status === 'accepted' ? 'Passed' : 'Failed'}
@@ -921,7 +988,7 @@ export default function ProblemSolve() {
             </div>
 
             {/* Bottom Actions */}
-            <div className="flex items-center justify-between px-4 py-3 bg-[#1f1f1f] border-t border-zinc-800">
+            <div className="af-terminal-actions flex items-center justify-between px-4 py-3 bg-[#1f1f1f] border-t border-zinc-800">
               <div className="flex items-center gap-3 text-xs text-zinc-400">
                 <span className="font-mono text-zinc-500">
                   {language.toUpperCase()}
@@ -930,18 +997,9 @@ export default function ProblemSolve() {
 
               <div className="flex items-center gap-3">
                 <button
-                  disabled={busy}
-                  onClick={handleRunCode}
-                  className="flex items-center gap-1.5 rounded-lg bg-[#262626] border border-zinc-700/60 px-4 py-2 text-xs font-semibold text-zinc-200 hover:bg-zinc-700 hover:text-white transition disabled:opacity-50 active:scale-95 shadow-sm"
-                >
-                  <Play size={13} fill="currentColor" />
-                  <span>Run</span>
-                </button>
-
-                <button
-                  disabled={busy}
+                  disabled={busy || !problem}
                   onClick={handleSubmitCode}
-                  className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50 active:scale-95 shadow-lg shadow-emerald-600/20"
+                  className="flex items-center gap-1.5 rounded-lg bg-red-600 px-5 py-2 text-xs font-bold text-white hover:bg-red-500 transition disabled:opacity-50 active:scale-95 shadow-lg shadow-red-600/20"
                 >
                   {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                   <span>Submit</span>

@@ -4,6 +4,7 @@ const app = require('../../server');
 const config = require('../../config/env');
 const { closeRedis } = require('../../controllers/healthController');
 const judgeQueue = require('../../queues/judgeQueue');
+const runQueue = require('../../queues/runQueue');
 
 let server = null;
 let baseUrl = '';
@@ -24,6 +25,12 @@ async function startTestServer() {
     });
   }
 
+  // Keep integration results independent of failed jobs left by a prior test
+  // process.  This runs only under the test environment.
+  if (process.env.NODE_ENV === 'test') {
+    await Promise.all([judgeQueue.drain(true), runQueue.drain(true)]);
+  }
+
   return { baseUrl, server };
 }
 
@@ -37,7 +44,7 @@ async function stopTestServer() {
   }
   try {
     await Promise.race([
-      judgeQueue.close(),
+      Promise.all([judgeQueue.close(), runQueue.close()]),
       new Promise((resolve) => setTimeout(resolve, 500))
     ]);
   } catch {}

@@ -184,7 +184,8 @@ describe('Integration: Phase 4 Security and Multi-Tenant Boundaries', () => {
         title: 'Admin Created Problem',
         difficulty: 'Medium',
         description: 'Detailed description for test',
-        status: 'published'
+        status: 'published',
+        hiddenTestcases: [{ input: [1, 2], output: '3' }]
       })
     });
 

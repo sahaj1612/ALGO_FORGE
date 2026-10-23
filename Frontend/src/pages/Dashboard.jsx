@@ -118,7 +118,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-red-500 selection:text-white">
+    <div className="af-page af-dashboard min-h-screen bg-black text-white selection:bg-red-500 selection:text-white">
       <SiteHeader />
 
       <main className="max-w-7xl mx-auto px-6 sm:px-8 py-8">
@@ -161,10 +161,10 @@ export default function Dashboard() {
                   <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                     Acceptance Rate
                   </p>
-                  <p className="mt-2 text-2xl font-bold text-emerald-400">{accuracy}%</p>
+                  <p className="mt-2 text-2xl font-bold text-red-400">{accuracy}%</p>
                   <p className="text-xs text-zinc-500 mt-1">{accepted.length} accepted runs</p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
                   <CheckCircle2 size={24} />
                 </div>
               </div>
@@ -251,14 +251,14 @@ export default function Dashboard() {
                     >
                       <div className="flex items-center gap-3">
                         <span
-                          className={`w-2.5 h-2.5 rounded-full ${isAccepted ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-red-400'
+                          className={`w-2.5 h-2.5 rounded-full ${isAccepted ? 'bg-red-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-red-400'
                             }`}
                         />
                         <span className="font-semibold text-zinc-200">{problemTitle}</span>
                         {problemDiff && (
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full font-medium ${problemDiff === 'Easy'
-                                ? 'bg-teal-500/10 text-[#00b8a3]'
+                                ? 'af-easy-badge'
                                 : problemDiff === 'Medium'
                                   ? 'bg-amber-500/10 text-[#ffc01e]'
                                   : 'bg-rose-500/10 text-[#ef476f]'
@@ -271,7 +271,7 @@ export default function Dashboard() {
 
                       <div className="flex items-center gap-4 text-sm text-zinc-400">
                         <span
-                          className={`font-semibold capitalize ${isAccepted ? 'text-emerald-400' : 'text-red-400'
+                          className={`font-semibold capitalize ${isAccepted ? 'text-red-400' : 'text-red-400'
                             }`}
                         >
                           {submission.status.replaceAll('_', ' ')}

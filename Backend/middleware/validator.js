@@ -131,7 +131,7 @@ function validateProblemPayload(req, res, next) {
   const allowedFields = [
     'slug', 'title', 'difficulty', 'description', 'topic', 'topics',
     'status', 'timeLimit', 'memoryLimit', 'supportedLanguages',
-    'starterCode', 'signature', 'examples', 'testcases', 'hiddenTestcases',
+    'starterCode', 'signature', 'adapter', 'examples', 'testcases', 'hiddenTestcases',
     'inputFormat', 'outputFormat', 'constraints', 'editorial'
   ];
 
@@ -155,6 +155,18 @@ function validateProblemPayload(req, res, next) {
 
   if (sanitized.status && !['draft', 'review', 'published', 'retired'].includes(sanitized.status)) {
     return next(new BadRequestError('Status must be draft, review, published, or retired.'));
+  }
+
+  if (sanitized.adapter !== undefined) {
+    const adapter = sanitized.adapter;
+    if (!adapter || typeof adapter !== 'object' || !['function', 'linked_list_cycle', 'graph'].includes(adapter.kind)) {
+      return next(new BadRequestError('adapter.kind must be function, linked_list_cycle, or graph.'));
+    }
+    for (const field of ['valueField', 'cyclePositionField']) {
+      if (adapter[field] !== undefined && (typeof adapter[field] !== 'string' || !/^[A-Za-z][A-Za-z0-9_]*$/.test(adapter[field]))) {
+        return next(new BadRequestError(`adapter.${field} must be a simple field name.`));
+      }
+    }
   }
 
   if (sanitized.timeLimit !== undefined) {

@@ -64,19 +64,16 @@ async function getProblems({ cursor, topic, difficulty, q, limit = 20 }, userId 
   };
 }
 
-async function getProblemBySlugOrId(slugOrId) {
-  if (!slugOrId?.trim()) {
+async function getProblemBySlug(slug) {
+  if (!slug?.trim()) {
     throw new NotFoundError('Problem not found.');
   }
 
-  const clean = slugOrId.trim();
-  let query = { status: 'published' };
-
-  if (mongoose.Types.ObjectId.isValid(clean)) {
-    query.$or = [{ slug: clean.toLowerCase() }, { _id: clean }];
-  } else {
-    query.slug = clean.toLowerCase();
-  }
+  const clean = slug.trim().toLowerCase();
+  const identifierQuery = mongoose.Types.ObjectId.isValid(clean)
+    ? { $or: [{ slug: clean }, { _id: new mongoose.Types.ObjectId(clean) }] }
+    : { slug: clean };
+  const query = { status: 'published', ...identifierQuery };
 
   const problem = await Problem.findOne(query).select('-hiddenTestcases');
   if (!problem) {
@@ -101,12 +98,14 @@ async function createProblemAdmin(data) {
     throw new ConflictError(`Problem with slug '${cleanSlug}' already exists.`);
   }
 
-  return Problem.create({
+  const problem = new Problem({
     ...data,
     slug: cleanSlug,
     title: title.trim(),
     version: 1
   });
+  assertPublishableContract(problem);
+  return problem.save();
 }
 
 async function updateProblemAdmin(id, updates) {
@@ -126,20 +125,41 @@ async function updateProblemAdmin(id, updates) {
     }
   }
 
-  const problem = await Problem.findByIdAndUpdate(
-    id,
-    {
-      ...cleanUpdates,
-      $inc: { version: 1 }
-    },
-    { new: true, runValidators: true }
-  );
+  const problem = await Problem.findById(id);
 
   if (!problem) {
     throw new NotFoundError('Problem not found.');
   }
 
+  Object.assign(problem, cleanUpdates);
+  problem.version += 1;
+  assertPublishableContract(problem);
+  await problem.save();
+
   return problem;
+}
+
+function assertPublishableContract(problem) {
+  if (problem.status !== 'published') return;
+
+  const signature = problem.signature;
+  if (!signature?.functionName || !signature.returnType || !Array.isArray(signature.parameters)) {
+    throw new BadRequestError('Published problems require a callable signature.');
+  }
+  if (!problem.adapter?.kind) {
+    throw new BadRequestError('Published problems require an adapter specification.');
+  }
+  if (!Array.isArray(problem.supportedLanguages) || problem.supportedLanguages.length === 0) {
+    throw new BadRequestError('Published problems must declare at least one supported language.');
+  }
+  for (const language of problem.supportedLanguages) {
+    if (typeof problem.starterCode?.get === 'function' ? !problem.starterCode.get(language) : !problem.starterCode?.[language]) {
+      throw new BadRequestError(`Published problem is missing starter code for ${language}.`);
+    }
+  }
+  if (!Array.isArray(problem.hiddenTestcases) || problem.hiddenTestcases.length === 0) {
+    throw new BadRequestError('Published problems require at least one hidden testcase.');
+  }
 }
 
 async function retireProblemAdmin(id) {
@@ -170,11 +190,10 @@ async function deleteProblemAdmin(id) {
 
 module.exports = {
   getProblems,
-  getProblemBySlugOrId,
+  getProblemBySlug,
   getAllProblemsAdmin,
   createProblemAdmin,
   updateProblemAdmin,
   retireProblemAdmin,
   deleteProblemAdmin
 };
-

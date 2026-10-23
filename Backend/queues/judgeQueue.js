@@ -16,6 +16,20 @@ const judgeQueue = new Queue('judge-queue', {
       }
       return Math.min(times * 100, 2000);
     }
+  },
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 1000
+    },
+    removeOnComplete: {
+      count: 500,
+      age: 3600
+    },
+    removeOnFail: {
+      count: 1000 // Retain failed jobs as dead-letter record for audit/reconciliation
+    }
   }
 });
 

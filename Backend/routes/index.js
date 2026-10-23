@@ -8,6 +8,7 @@ const userRoutes = require('./userRoutes');
 const learningRoutes = require('./learningRoutes');
 const healthRoutes = require('./healthRoutes');
 const auditRoutes = require('./auditRoutes');
+const metricsRoutes = require('./metricsRoutes');
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ function registerApiRoutes(r) {
   r.use('/submit', submitRoutes);
   r.use('/learning', learningRoutes);
   r.use('/admin/audit-logs', auditRoutes);
+  r.use('/metrics', metricsRoutes);
   r.use('/', userRoutes);
 }
 

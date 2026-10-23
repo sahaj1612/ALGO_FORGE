@@ -27,7 +27,7 @@ async function listProblems(req, res, next) {
 
 async function getProblemDetail(req, res, next) {
   try {
-    const problem = await problemService.getProblemBySlugOrId(req.params.slug);
+    const problem = await problemService.getProblemBySlug(req.params.slug);
     res.json(problem);
   } catch (error) {
     next(error);

@@ -74,6 +74,8 @@ async function executeRun({ code, problemId, language = 'javascript', input, tes
       code,
       input: test.input,
       language: cleanLang,
+      signature: problem.signature,
+      adapter: problem.adapter,
       timeLimit: problem.timeLimit || 4000,
       memoryLimit: problem.memoryLimit || 256
     });

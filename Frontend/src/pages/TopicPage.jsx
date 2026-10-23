@@ -61,7 +61,7 @@ export default function TopicPage() {
                 <span
                   className={`px-4 py-1 rounded-full text-sm font-semibold tracking-wide ${
                     problem.difficulty === "Easy"
-                      ? "bg-green-900/80 text-green-400 border border-green-700/40"
+                      ? "af-easy-badge"
                       : problem.difficulty === "Medium"
                       ? "bg-yellow-900/80 text-yellow-400 border border-yellow-700/40"
                       : "bg-red-900/80 text-red-400 border border-red-700/40"

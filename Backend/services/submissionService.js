@@ -5,7 +5,7 @@ const judgeQueue = require('../queues/judgeQueue');
 const { BadRequestError, NotFoundError, ForbiddenError } = require('../utils/errors');
 const { SUPPORTED_LANGUAGES, isTerminalVerdict } = require('../shared/constants');
 
-async function createSubmission({ userId, problemId, code, language = 'javascript' }) {
+async function createSubmission({ userId, problemId, code, language = 'javascript', correlationId }) {
   if (!code?.trim() || !problemId) {
     throw new BadRequestError('Valid code and problemId are required.');
   }
@@ -35,16 +35,32 @@ async function createSubmission({ userId, problemId, code, language = 'javascrip
     userId,
     problemId: problem._id,
     problemVersion: problem.version || 1,
+    problemSnapshot: {
+      version: problem.version || 1,
+      signature: problem.signature.toObject ? problem.signature.toObject() : problem.signature,
+      adapter: problem.adapter.toObject ? problem.adapter.toObject() : problem.adapter,
+      // Copy the values now; the worker must not read mutable problem tests.
+      hiddenTestcases: (problem.hiddenTestcases || []).map(testcase =>
+        testcase.toObject ? testcase.toObject() : testcase
+      ),
+      timeLimit: problem.timeLimit || 4000,
+      memoryLimit: problem.memoryLimit || 256
+    },
     code,
     language: cleanLang,
-    status: 'pending'
+    status: 'pending',
+    heartbeatAt: new Date(),
+    ...(correlationId ? { correlationId } : {})
   });
 
   try {
     await Promise.race([
       judgeQueue.add(
         'judge-job',
-        { submissionId: submission._id.toString() },
+        {
+          submissionId: submission._id.toString(),
+          correlationId: correlationId || `sub-${Date.now()}`
+        },
         { removeOnComplete: 200, removeOnFail: 200 }
       ),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Queue connection timeout')), 600))

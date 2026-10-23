@@ -7,7 +7,8 @@ async function createSubmission(req, res, next) {
       userId: req.user.id,
       problemId,
       code,
-      language
+      language,
+      correlationId: req.id
     });
     // Deliverable 4 / API contract: Return HTTP 202 Accepted
     res.status(202).json(result);

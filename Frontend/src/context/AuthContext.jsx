@@ -32,40 +32,34 @@ export function LoginModal({ isOpen, onClose, onLogin, message }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-7 sm:p-8 text-center shadow-2xl">
+    <div className="af-login-overlay fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="af-login-dialog relative w-full max-w-md rounded-3xl p-7 sm:p-8 text-center">
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 rounded-full p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
+          className="af-login-close absolute right-5 top-5 rounded-full p-1.5 transition"
           aria-label="Close"
         >
           <X size={20} />
         </button>
 
-        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10 text-red-500 shadow-lg shadow-red-500/10">
+        <div className="af-login-icon mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl">
           <Lock size={28} />
         </div>
 
-        <h2 className="text-2xl font-bold text-white tracking-tight">Login Required</h2>
-        <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
+        <h2 className="af-login-title text-2xl font-bold tracking-tight">Login Required</h2>
+        <p className="af-login-description mt-3 text-sm leading-relaxed">
           {message || 'You need to sign in with your Google account first to access practice problems, dashboard, and features.'}
         </p>
 
-        <div className="mt-7 flex flex-col gap-3">
+        <div className="mt-7 flex flex-col">
           <button
             onClick={onLogin}
-            className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-5 py-3.5 text-sm font-bold text-zinc-900 shadow-lg transition hover:bg-zinc-100 active:scale-95"
+            className="af-google-login flex w-full items-center justify-center gap-3 rounded-xl px-5 py-3.5 text-sm font-bold transition active:scale-[.98]"
           >
             <GoogleLogo />
             <span>Sign in with Google</span>
           </button>
 
-          <button
-            onClick={onClose}
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-800/60 px-5 py-3 text-sm font-semibold text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
-          >
-            Maybe Later
-          </button>
         </div>
       </div>
     </div>
@@ -75,6 +69,7 @@ export function LoginModal({ isOpen, onClose, onLogin, message }) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [authReady, setAuthReady] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
 
@@ -139,6 +134,7 @@ export function AuthProvider({ children }) {
     const currentToken = tokenFromRedirect || localStorage.getItem('token');
     if (!currentToken) {
       setUser(null);
+      setAuthReady(true);
       return;
     }
 
@@ -146,10 +142,16 @@ export function AuthProvider({ children }) {
     authenticatedFetch(`${API}/profile`)
       .then(res => (res.ok ? res.json() : Promise.reject()))
       .then(profile => {
-        if (active) setUser(profile);
+        if (active) {
+          setUser(profile);
+          setAuthReady(true);
+        }
       })
       .catch(() => {
-        if (active) setUser(null);
+        if (active) {
+          setUser(null);
+          setAuthReady(true);
+        }
       });
 
     return () => {
@@ -181,8 +183,7 @@ export function AuthProvider({ children }) {
   };
 
   const requireAuth = (callback, customMessage) => {
-    const currentToken = localStorage.getItem('token');
-    if (!currentToken) {
+    if (!user) {
       setModalMessage(customMessage || 'Please sign in with your Google account first to continue.');
       setModalOpen(true);
       return false;
@@ -197,8 +198,10 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
+        updateUser: setUser,
         token,
-        isAuthenticated: !!(user || token),
+        isAuthenticated: !!user,
+        isAuthLoading: !authReady,
         loginWithGoogle,
         logout,
         requireAuth,

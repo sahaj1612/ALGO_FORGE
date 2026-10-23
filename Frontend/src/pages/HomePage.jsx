@@ -1,105 +1,179 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion as Motion } from "framer-motion";
+import {
+  ArrowDownRight,
+  ArrowRight,
+  ArrowUpRight,
+  Code2,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import SiteHeader from "../components/SiteHeader";
 import { useAuth } from "../context/AuthContext";
+import { problems } from "../data/problems";
 import "../index.css";
+
+const demoCode = `// Find two numbers that add up to target
+vector<int> twoSum(nums, target) {
+  unordered_map<int, int> seen;
+  for (int i = 0; i < nums.size(); i++) {
+    int need = target - nums[i];
+    if (seen.count(need))
+      return {seen[need], i};
+    seen[nums[i]] = i;
+  }
+  return {};
+}`;
+
+function highlightLine(line) {
+  const pieces = line.split(/(\/\/.*|\b(?:vector|unordered_map|int|for|if|return)\b|\b\d+\b|twoSum|"[^"]*")/g);
+  return pieces.map((part, index) => {
+    let kind = "";
+    if (part.startsWith("//")) kind = "comment";
+    else if (/^(vector|unordered_map|int|for|if|return)$/.test(part)) kind = "keyword";
+    else if (/^\d+$/.test(part)) kind = "number";
+    else if (part === "twoSum") kind = "function";
+    else if (part.startsWith('"')) kind = "string";
+    return <span className={kind} key={`${index}-${part}`}>{part}</span>;
+  });
+}
+
+function CodePreview() {
+  const [visibleChars, setVisibleChars] = useState(0);
+
+  useEffect(() => {
+    let timeout;
+    let position = 0;
+    let deleting = false;
+    const tick = () => {
+      if (!deleting) {
+        position += 1;
+        setVisibleChars(position);
+        if (position >= demoCode.length) {
+          deleting = true;
+          timeout = window.setTimeout(tick, 1800);
+          return;
+        }
+        timeout = window.setTimeout(tick, 33);
+      } else {
+        position = 0;
+        setVisibleChars(0);
+        deleting = false;
+        timeout = window.setTimeout(tick, 500);
+      }
+    };
+    timeout = window.setTimeout(tick, 700);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  const lines = demoCode.slice(0, visibleChars).split("\n");
+  return (
+    <div className="af-editor" aria-label="Live typing code preview">
+      <div className="af-editor-top">
+        <div className="af-window-dots" aria-hidden="true"><i /><i /><i /></div>
+        <div className="af-file-name"><Code2 size={15} /> <span>two-sum.cpp</span></div>
+        <span className="af-language">C++ 17 <span aria-hidden="true">⌄</span></span>
+      </div>
+      <div className="af-code-area" aria-live="off">
+        {lines.map((line, index) => (
+          <div className="af-code-line" key={index}>
+            <span className="af-line-number">{index + 1}</span>
+            <code>{highlightLine(line)}{index === lines.length - 1 && <span className="af-caret" />}</code>
+          </div>
+        ))}
+      </div>
+      <div className="af-console">
+        <div className="af-console-label"><span className="af-run-icon">▶</span> TEST RESULTS <span className="af-console-divider">·</span> 4 cases</div>
+        <div className="af-pass"><span /> All passed</div>
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const navigate = useNavigate();
   const { requireAuth } = useAuth();
+  const [theme, setTheme] = useState(() => localStorage.getItem("algoforge-theme") || "dark");
+
+  useEffect(() => {
+    localStorage.setItem("algoforge-theme", theme);
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  const practice = () => requireAuth(
+    () => navigate("/practice"),
+    "Please sign in with your Google account first to start practicing problems."
+  );
+  const explore = () => requireAuth(
+    () => navigate("/explore"),
+    "Please sign in with your Google account first to explore all problems."
+  );
+
+  const featured = problems.slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <SiteHeader />
+    <div className={`af-home theme-${theme}`}>
+      <SiteHeader
+        homeTheme={theme}
+        onToggleTheme={() => setTheme(current => current === "dark" ? "light" : "dark")}
+      />
 
-      {/* HERO */}
-      <section className="flex flex-col items-center justify-center text-center mt-24 px-6">
-        <Motion.h1
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-5xl font-extrabold leading-tight text-red-500"
-        >
-          Master Data Structures & Algorithms
-        </Motion.h1>
+      <main className="af-shell">
+        <section className="af-hero">
+          <div className="af-hero-copy">
+            <Motion.div className="af-eyebrow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <span className="af-live-dot" /> YOUR NEXT INTERVIEW ADVANTAGE
+            </Motion.div>
+            <Motion.h1 initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65 }}>
+              Think sharper.<br /><span>Code stronger.</span>
+            </Motion.h1>
+            <Motion.p className="af-lead" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12, duration: 0.6 }}>
+              Build real problem-solving skills with curated challenges, a focused coding workspace, and instant feedback that helps you improve with every attempt.
+            </Motion.p>
+            <div className="af-hero-actions">
+              <button className="af-button af-button-primary" onClick={practice}>Start practicing <ArrowRight size={17} /></button>
+              <button className="af-button af-button-secondary" onClick={explore}>Explore problems <ArrowUpRight size={16} /></button>
+            </div>
+            <div className="af-social-proof">
+              <div className="af-avatar-marquee" role="img" aria-label="Learner initials A, R, and M">
+                <div className="af-avatar-group" aria-hidden="true"><span>A</span><span>R</span><span>M</span></div>
+              </div>
+              <span><strong>Join fellow learners</strong> leveling up together</span>
+              <Sparkles className="af-proof-sparkle" size={15} />
+            </div>
+          </div>
 
-        <Motion.p
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-          className="mt-6 text-lg text-zinc-400 max-w-2xl"
-        >
-          Practice coding problems, compete in contests, and get interview ready for top tech companies.
-        </Motion.p>
-
-        <Motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.6, duration: 0.6 }}
-          className="flex gap-6 mt-10"
-        >
-          <button
-            onClick={() =>
-              requireAuth(
-                () => navigate("/practice"),
-                "Please sign in with your Google account first to start practicing problems."
-              )
-            }
-            className="px-6 py-3 rounded-2xl border border-red-500 text-red-500 font-semibold
-            transition-all duration-300 hover:scale-105 hover:bg-red-600 hover:text-white cursor-pointer"
-          >
-            Start Practicing
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              requireAuth(
-                () => navigate("/explore"),
-                "Please sign in with your Google account first to explore all problems."
-              )
-            }
-            className="px-6 py-3 rounded-2xl border border-red-500 text-red-500 font-semibold
-            transition-all duration-300 hover:scale-105 hover:bg-red-600 hover:text-white cursor-pointer"
-          >
-            Explore Problems
-          </button>
-        </Motion.div>
-      </section>
-
-      {/* FEATURES */}
-      <section className="grid md:grid-cols-3 gap-8 px-10 mt-32 pb-24">
-        {[
-          { title: "Curated Questions", desc: "Company-wise structured problems for interviews" },
-          { title: "Real Contests", desc: "Weekly contests with live rankings" },
-          { title: "Code Playground", desc: "Run code in multiple languages instantly" },
-        ].map((card, i) => (
-          <Motion.div
-            key={i}
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            whileHover={{
-              y: -10,
-              scale: 1.05,
-            }}
-            transition={{
-              stiffness: 300,
-            }}
-            className="p-8 rounded-2xl bg-zinc-900 border border-red-900/30
-                       shadow-md hover:shadow-red-500/20"
-          >
-            <h3 className="text-2xl font-bold text-red-500">{card.title}</h3>
-            <p className="mt-4 text-zinc-400">{card.desc}</p>
+          <Motion.div className="af-demo-wrap" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15, duration: 0.7 }}>
+            <CodePreview />
           </Motion.div>
-        ))}
-      </section>
+        </section>
 
-      {/* FOOTER */}
-      <footer className="text-center py-6 border-t border-red-900/40">
-        <p className="text-zinc-500">
-          © 2026 Sahaj — AlgoCode. Master the Algorithm.
-        </p>
-      </footer>
+        <section className="af-stats" aria-label="Platform highlights">
+          <div><strong>Curated</strong><span>Practice problems</span></div>
+          <div><strong>5</strong><span>Languages supported</span></div>
+          <div><strong>Every day</strong><span>A chance to improve</span></div>
+        </section>
+
+        <section className="af-problems" id="problems">
+          <div className="af-section-heading">
+            <div><span className="af-section-kicker">A GOOD PLACE TO START</span><h2>Pick up where you grow</h2><p>Handpicked challenges to help you build momentum.</p></div>
+            <button className="af-text-link" onClick={explore}>Browse problems <ArrowRight size={15} /></button>
+          </div>
+          <div className="af-problem-grid">
+            {featured.map((problem, index) => (
+              <Motion.button className="af-problem-card" key={problem.id} onClick={explore} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.08 }} whileHover={{ y: -4 }}>
+                <div className="af-card-tags"><span>{problem.topic}</span><span className={`af-difficulty difficulty-${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span></div>
+                <h3>{problem.title}</h3>
+                <p>{problem.description.split("\n")[0]}</p>
+                <div className="af-card-bottom"><span><Users size={14} /> Try this challenge</span><ArrowDownRight size={16} /></div>
+              </Motion.button>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      <footer className="af-footer"><div><span className="af-footer-brand"><Code2 size={16} /> AlgoForge</span><span>Sharpen your thinking, one problem at a time.</span></div><span>Made for curious minds <Sparkles size={14} /></span></footer>
     </div>
   );
 }

@@ -116,14 +116,14 @@ export function getImplementedProblemId(title) {
     clean === 'find the maximum element in an array' ||
     clean === 'maximum element in an array'
   ) {
-    return '69bd041c0669b885ce198b33';
+    return 'find-maximum-element';
   }
 
   if (
     clean === 'detect cycle in linked list' ||
     clean === 'detect cycle in a linked list'
   ) {
-    return '69bd041c0669b885ce198b34';
+    return 'detect-cycle-in-linked-list';
   }
 
   if (
@@ -131,7 +131,7 @@ export function getImplementedProblemId(title) {
     clean === "dijkstras algorithm" ||
     clean === 'dijkstra algorithm'
   ) {
-    return '69bd041c0669b885ce198b35';
+    return 'dijkstras-algorithm';
   }
 
   return null;

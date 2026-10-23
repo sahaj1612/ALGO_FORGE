@@ -28,6 +28,18 @@ const signatureSchema = new mongoose.Schema({
   parameters: [parameterSchema]
 }, { _id: false });
 
+const adapterSchema = new mongoose.Schema({
+  // The runner consumes this specification; it must not infer a shape from
+  // untrusted testcase keys at execution time.
+  kind: {
+    type: String,
+    enum: ['function', 'linked_list_cycle', 'graph'],
+    default: 'function'
+  },
+  valueField: { type: String, default: 'nums' },
+  cyclePositionField: { type: String, default: 'pos' }
+}, { _id: false });
+
 const problemSchema = new mongoose.Schema({
   slug: {
     type: String,
@@ -113,6 +125,11 @@ const problemSchema = new mongoose.Schema({
       returnType: "int",
       parameters: [{ name: "nums", type: "int[]" }]
     })
+  },
+
+  adapter: {
+    type: adapterSchema,
+    default: () => ({ kind: 'function' })
   },
 
   examples: [exampleSchema],

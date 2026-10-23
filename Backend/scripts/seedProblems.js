@@ -243,6 +243,7 @@ const rawProblems = [
       c: "bool solve(struct ListNode* head) {\n    if (!head || !head->next) return false;\n    struct ListNode *slow = head, *fast = head;\n    while (fast && fast->next) {\n        slow = slow->next;\n        fast = fast->next->next;\n        if (slow == fast) return true;\n    }\n    return false;\n}"
     },
     signature: { functionName: "solve", returnType: "boolean", parameters: [{ name: "head", type: "ListNode" }] },
+    adapter: { kind: "linked_list_cycle", valueField: "nums", cyclePositionField: "pos" },
     examples: [
       { input: "head = [3, 2, 0, -4], pos = 1", output: "true", explanation: "There is a cycle in the linked list, where the tail connects to the 1st node." },
       { input: "head = [1, 2], pos = 0", output: "true", explanation: "Tail connects to node 0." }
@@ -439,6 +440,7 @@ const rawProblems = [
       c: "#include <stdlib.h>\nint* solve(int n, int edges[][3], int edgesSize, int start, int* returnSize) {\n    *returnSize = n;\n    int* dist = (int*)malloc(n * sizeof(int));\n    for (int i = 0; i < n; i++) dist[i] = 1000000000;\n    dist[start] = 0;\n    for (int i = 0; i < n - 1; i++) {\n        for (int j = 0; j < edgesSize; j++) {\n            int u = edges[j][0], v = edges[j][1], w = edges[j][2];\n            if (dist[u] != 1000000000 && dist[u] + w < dist[v]) {\n                dist[v] = dist[u] + w;\n            }\n        }\n    }\n    for (int i = 0; i < n; i++) if (dist[i] == 1000000000) dist[i] = -1;\n    return dist;\n}"
     },
     signature: { functionName: "solve", returnType: "int[]", parameters: [{ name: "n", type: "int" }, { name: "edges", type: "int[][]" }, { name: "start", type: "int" }] },
+    adapter: { kind: "graph" },
     examples: [
       { input: "n = 4, edges = [[0, 1, 1], [1, 2, 2], [0, 2, 4], [2, 3, 1]], start = 0", output: "[0, 1, 3, 4]", explanation: "Shortest distances from 0 are [0, 1, 3, 4]." }
     ],

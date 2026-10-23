@@ -80,14 +80,14 @@ export default function ProblemsList() {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="af-page af-problems min-h-screen bg-black text-white">
       <SiteHeader />
       <main className="p-6 sm:p-8 max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold text-red-500 tracking-tight">Explore Problems</h1>
             <p className="text-zinc-400 text-sm mt-1">
-              Curated collection of algorithm and data structure problems with live Docker judging.
+              Curated collection of algorithm and data structure problems with instant feedback.
             </p>
           </div>
           <div className="text-xs text-zinc-500 font-medium">
@@ -160,7 +160,7 @@ export default function ProblemsList() {
                   <div className="flex items-center gap-3.5 min-w-0">
                     {p.isSolved ? (
                       <span title="Solved">
-                        <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+                        <CheckCircle2 size={18} className="text-red-400 shrink-0" />
                       </span>
                     ) : (
                       <span className="w-4 h-4 rounded-full border border-zinc-700 shrink-0" />
@@ -179,7 +179,7 @@ export default function ProblemsList() {
                     <span
                       className={`text-xs px-3 py-1 rounded-full font-semibold border ${
                         p.difficulty === 'Easy'
-                          ? 'bg-teal-500/10 text-[#00b8a3] border-teal-500/20'
+                          ? 'af-easy-badge'
                           : p.difficulty === 'Medium'
                           ? 'bg-amber-500/10 text-[#ffc01e] border-amber-500/20'
                           : 'bg-rose-500/10 text-[#ef476f] border-rose-500/20'

@@ -18,7 +18,7 @@ export default function Practice() {
     fetch("http://localhost:5000/api/problems")
       .then(res => res.json())
       .then(data => {
-        setProblems(Array.isArray(data) ? data : []);
+        setProblems(Array.isArray(data) ? data : data.items || []);
       })
       .catch(() => {});
 
@@ -41,7 +41,7 @@ export default function Practice() {
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="af-page af-practice min-h-screen bg-black text-white">
       <SiteHeader />
       <main className="px-10 py-10">
         {/* PAGE TITLE */}
@@ -123,30 +123,30 @@ export default function Practice() {
               title: "Find the maximum element in an array",
               difficulty: "Easy",
               isInteractive: true,
-              id: "69bd041c0669b885ce198b33",
+              slug: "find-maximum-element",
               keyword: "maximum",
             },
             {
               title: "Detect cycle in linked list",
               difficulty: "Medium",
               isInteractive: true,
-              id: "69bd041c0669b885ce198b34",
+              slug: "detect-cycle-in-linked-list",
               keyword: "cycle",
             },
             {
               title: "Dijkstra's Algorithm",
               difficulty: "Hard",
               isInteractive: true,
-              id: "69bd041c0669b885ce198b35",
+              slug: "dijkstras-algorithm",
               keyword: "dijkstra",
             },
           ].map((item, index) => {
             const matchedProblem = problems.find(
               p =>
-                p.title.toLowerCase().includes(item.keyword) ||
-                p.title.toLowerCase() === item.title.toLowerCase()
+                p.title?.toLowerCase().includes(item.keyword) ||
+                p.title?.toLowerCase() === item.title.toLowerCase()
             );
-            const targetId = matchedProblem?._id || item.id;
+            const targetId = matchedProblem?.slug || item.slug;
 
             return (
               <div
@@ -175,7 +175,7 @@ export default function Practice() {
                 <span
                   className={`px-4 py-1 rounded-full text-sm font-semibold tracking-wide ${
                     item.difficulty === "Easy"
-                      ? "bg-green-900/80 text-green-400 border border-green-700/40"
+                      ? "af-easy-badge"
                       : item.difficulty === "Medium"
                       ? "bg-yellow-900/80 text-yellow-400 border border-yellow-700/40"
                       : "bg-red-900/80 text-red-400 border border-red-700/40"

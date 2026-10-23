@@ -69,14 +69,18 @@ function formatInput(input) {
   return String(input ?? '');
 }
 
-function wrapper(code, input, language) {
+function wrapper(code, input, language, signature = null, adapter = null) {
   let parsed = input;
   if (typeof input === 'string') {
     try { parsed = JSON.parse(input); } catch {}
   }
 
-  const isCycle = Boolean(parsed && typeof parsed === 'object' && 'nums' in parsed && 'pos' in parsed);
-  const isDijkstra = Boolean(parsed && typeof parsed === 'object' && 'edges' in parsed && 'n' in parsed);
+  // Adapter selection is driven by the published callable contract, never by
+  // coincidental property names in an input value.
+  const parameterTypes = (signature?.parameters || []).map(parameter => parameter.type);
+  const isCycle = adapter ? adapter.kind === 'linked_list_cycle' : parameterTypes.includes('ListNode');
+  const isDijkstra = adapter ? adapter.kind === 'graph' : (parameterTypes.some(type => /\[\]\[\]|edges/i.test(type)) &&
+    parameterTypes.some(type => /^int$/.test(type)));
 
   // 1. JAVASCRIPT ADAPTER
   if (language === 'javascript') {
@@ -89,7 +93,7 @@ function __run_solution() {
     try { input_data = JSON.parse(input_data); } catch(e) {}
   }
 
-  if (input_data && typeof input_data === 'object' && 'nums' in input_data && 'pos' in input_data) {
+  if (${isCycle} && input_data && typeof input_data === 'object') {
     function ListNode(val, next) {
       this.val = (val === undefined ? 0 : val);
       this.next = (next === undefined ? null : next);
@@ -110,7 +114,7 @@ function __run_solution() {
     return;
   }
 
-  if (input_data && typeof input_data === 'object' && 'edges' in input_data && 'n' in input_data) {
+  if (${isDijkstra} && input_data && typeof input_data === 'object') {
     const n = input_data.n;
     const edges = input_data.edges;
     const start = input_data.start || 0;
@@ -135,19 +139,15 @@ function __run_solution() {
     process.exit(1);
   }
 
+  const contractParameterNames = ${JSON.stringify((signature?.parameters || []).map(parameter => parameter.name))};
   if (input_data && typeof input_data === 'object' && !Array.isArray(input_data)) {
-    const vals = Object.values(input_data);
-    try {
-      res = solver.length > 1 ? solver(...vals) : solver(input_data);
-    } catch(e) {
-      res = solver(input_data);
-    }
+    const vals = contractParameterNames.length
+      ? contractParameterNames.map(name => input_data[name])
+      : [input_data];
+    res = solver(...vals);
   } else if (Array.isArray(input_data)) {
-    try {
-      res = (solver.length > 1 && input_data.length === solver.length) ? solver(...input_data) : solver(input_data);
-    } catch(e) {
-      res = solver(input_data);
-    }
+    // An array is one argument unless the explicit contract declares a tuple.
+    res = contractParameterNames.length > 1 ? solver(...input_data) : solver(input_data);
   } else {
     res = solver(input_data);
   }
@@ -177,7 +177,7 @@ def __run_solution():
         except:
             pass
 
-    if isinstance(input_data, dict) and 'nums' in input_data and 'pos' in input_data:
+    if ${isCycle ? 'True' : 'False'} and isinstance(input_data, dict):
         nums = input_data.get('nums', [])
         pos = input_data.get('pos', -1)
         node_cls = globals().get('ListNode')
@@ -201,7 +201,7 @@ def __run_solution():
         print("true" if res else "false")
         return
 
-    if isinstance(input_data, dict) and 'edges' in input_data and 'n' in input_data:
+    if ${isDijkstra ? 'True' : 'False'} and isinstance(input_data, dict):
         n = input_data['n']
         edges = input_data['edges']
         start = input_data.get('start', 0)
@@ -213,6 +213,7 @@ def __run_solution():
         print(json.dumps(res).replace(" ", ""))
         return
 
+    parameter_names = ${JSON.stringify((signature?.parameters || []).map(parameter => parameter.name))}
     if 'Solution' in globals():
         sol = Solution()
         if hasattr(sol, 'solve'):
@@ -222,7 +223,7 @@ def __run_solution():
                 except:
                     res = sol.solve(input_data)
             elif isinstance(input_data, dict):
-                res = sol.solve(**input_data)
+                res = sol.solve(*(input_data[name] for name in parameter_names)) if parameter_names else sol.solve(input_data)
             else:
                 res = sol.solve(input_data)
             print(json.dumps(res) if not isinstance(res, str) else res)
@@ -235,7 +236,7 @@ def __run_solution():
             except:
                 res = solve(input_data)
         elif isinstance(input_data, dict):
-            res = solve(**input_data)
+            res = solve(*(input_data[name] for name in parameter_names)) if parameter_names else solve(input_data)
         else:
             res = solve(input_data)
         print(json.dumps(res) if not isinstance(res, str) else res)
@@ -458,10 +459,14 @@ function getRunnerArgs({ mount, memoryLimit, image, compileAndRun }) {
     'none',
     '--memory',
     `${memoryLimit}m`,
+    '--memory-swap',
+    `${memoryLimit}m`,
     '--cpus',
     '1.0',
     '--pids-limit',
     '64',
+    '--ulimit',
+    'fsize=1048576:1048576',
     '--read-only',
     '--tmpfs',
     '/tmp:rw,nosuid,size=64m',
@@ -477,151 +482,7 @@ function getRunnerArgs({ mount, memoryLimit, image, compileAndRun }) {
   ];
 }
 
-function executeLocalFallback({ language, runDir, filePath, inputStr, timeoutMs }) {
-  try {
-    if (language === 'javascript') {
-      const nodeResult = spawnSync(process.execPath, [filePath], {
-        input: inputStr,
-        encoding: 'utf8',
-        timeout: timeoutMs,
-        windowsHide: true
-      });
-      if (nodeResult.error?.code === 'ETIMEDOUT') {
-        return { verdict: 'time_limit', error: 'Execution exceeded the time limit.', time: timeoutMs, memory: null };
-      }
-      const nodeOut = (nodeResult.stdout || '').trim();
-      const nodeErr = (nodeResult.stderr || '').trim();
-      if (nodeResult.status !== 0) {
-        return {
-          verdict: 'runtime_error',
-          error: sanitizeDiagnostic(nodeErr || 'Program exited with non-zero status.'),
-          time: 25,
-          memory: null
-        };
-      }
-      return { verdict: 'accepted', output: nodeOut, time: 25, memory: null };
-    }
-
-    if (language === 'python') {
-      const pyResult = spawnSync('python', [filePath], {
-        input: inputStr,
-        encoding: 'utf8',
-        timeout: timeoutMs,
-        windowsHide: true
-      });
-      if (pyResult.error?.code === 'ETIMEDOUT') {
-        return { verdict: 'time_limit', error: 'Execution exceeded the time limit.', time: timeoutMs, memory: null };
-      }
-      const pyOut = (pyResult.stdout || '').trim();
-      const pyErr = (pyResult.stderr || '').trim();
-      if (pyResult.status !== 0) {
-        const isCompError = /SyntaxError|IndentationError/i.test(pyErr);
-        return {
-          verdict: isCompError ? 'compilation_error' : 'runtime_error',
-          error: sanitizeDiagnostic(pyErr || 'Program exited with non-zero status.'),
-          time: 25,
-          memory: null
-        };
-      }
-      return { verdict: 'accepted', output: pyOut, time: 25, memory: null };
-    }
-
-    if (language === 'java') {
-      const compileResult = spawnSync('javac', [filePath], {
-        cwd: runDir,
-        encoding: 'utf8',
-        timeout: timeoutMs,
-        windowsHide: true
-      });
-      if (compileResult.status !== 0) {
-        return {
-          verdict: 'compilation_error',
-          error: sanitizeDiagnostic(compileResult.stderr || 'Java compilation failed.'),
-          time: 25,
-          memory: null
-        };
-      }
-      const runResult = spawnSync('java', ['-cp', runDir, 'Runner'], {
-        input: inputStr,
-        cwd: runDir,
-        encoding: 'utf8',
-        timeout: timeoutMs,
-        windowsHide: true
-      });
-      if (runResult.error?.code === 'ETIMEDOUT') {
-        return { verdict: 'time_limit', error: 'Execution exceeded the time limit.', time: timeoutMs, memory: null };
-      }
-      const runOut = (runResult.stdout || '').trim();
-      const runErr = (runResult.stderr || '').trim();
-      if (runResult.status !== 0) {
-        return {
-          verdict: 'runtime_error',
-          error: sanitizeDiagnostic(runErr || 'Program exited with non-zero status.'),
-          time: 25,
-          memory: null
-        };
-      }
-      return { verdict: 'accepted', output: runOut, time: 25, memory: null };
-    }
-
-    if (language === 'cpp' || language === 'c') {
-      const compiler = language === 'cpp' ? 'g++' : 'gcc';
-      const binName = process.platform === 'win32' ? 'solution.exe' : 'solution';
-      const binPath = path.join(runDir, binName);
-      const compileResult = spawnSync(compiler, ['-O2', filePath, '-o', binPath], {
-        cwd: runDir,
-        encoding: 'utf8',
-        timeout: timeoutMs,
-        windowsHide: true
-      });
-      if (compileResult.status !== 0) {
-        return {
-          verdict: 'compilation_error',
-          error: sanitizeDiagnostic(compileResult.stderr || `${compiler} compilation failed.`),
-          time: 25,
-          memory: null
-        };
-      }
-      const runResult = spawnSync(binPath, [], {
-        input: inputStr,
-        cwd: runDir,
-        encoding: 'utf8',
-        timeout: timeoutMs,
-        windowsHide: true
-      });
-      if (runResult.error?.code === 'ETIMEDOUT') {
-        return { verdict: 'time_limit', error: 'Execution exceeded the time limit.', time: timeoutMs, memory: null };
-      }
-      const runOut = (runResult.stdout || '').trim();
-      const runErr = (runResult.stderr || '').trim();
-      if (runResult.status !== 0) {
-        return {
-          verdict: 'runtime_error',
-          error: sanitizeDiagnostic(runErr || 'Program exited with non-zero status.'),
-          time: 25,
-          memory: null
-        };
-      }
-      return { verdict: 'accepted', output: runOut, time: 25, memory: null };
-    }
-  } catch (err) {
-    return {
-      verdict: 'server_error',
-      error: sanitizeDiagnostic(err.message),
-      time: 25,
-      memory: null
-    };
-  }
-
-  return {
-    verdict: 'server_error',
-    error: 'Docker sandbox runner is unreachable or daemon is not running.',
-    time: 25,
-    memory: null
-  };
-}
-
-async function execute({ code, input, language = 'javascript', timeLimit, memoryLimit = 256 }) {
+async function execute({ code, input, language = 'javascript', signature = null, adapter = null, timeLimit, memoryLimit = 256 }) {
   const config = LANGUAGES[language];
   if (!config) {
     return {
@@ -634,14 +495,31 @@ async function execute({ code, input, language = 'javascript', timeLimit, memory
 
   const runDir = await fs.mkdtemp(path.join(os.tmpdir(), 'algoforge-'));
   const filePath = path.join(runDir, config.file);
-  const wrappedCode = wrapper(code, input, language);
+  const wrappedCode = wrapper(code, input, language, signature, adapter);
 
   try {
     await fs.writeFile(filePath, wrappedCode, 'utf8');
 
     const defaultLimit = language === 'java' ? 7000 : 4000;
-    const timeoutMs = Math.min(Math.max(timeLimit || defaultLimit, 1000), 15000);
+    const configuredLimitMs = Math.min(Math.max(timeLimit || defaultLimit, 1000), 15000);
+    // JVM startup inside a fresh Docker container can consume most of a short
+    // problem limit before user code begins. Give Java a 5s minimum runtime
+    // budget while preserving longer per-problem limits.
+    const timeoutMs = language === 'java' ? Math.max(configuredLimitMs, 5000) : configuredLimitMs;
     const started = process.hrtime.bigint();
+
+    // Java compilation is setup time, not solution runtime. Keep the problem's
+    // runtime limit around the Java process itself and give javac a separate
+    // startup allowance so small submissions do not time out while compiling.
+    const javaRuntimeSeconds = Math.ceil(timeoutMs / 1000);
+    const executionCommand = language === 'java'
+      ? [
+          'bash',
+          '-c',
+          `javac -d /tmp /workspace/Solution.java && if [ -f /tmp/Runner.class ]; then busybox timeout ${javaRuntimeSeconds} java -cp /tmp Runner; else busybox timeout ${javaRuntimeSeconds} java -cp /tmp Solution; fi`,
+        ]
+      : config.compileAndRun;
+    const processTimeoutMs = language === 'java' ? timeoutMs + 10000 : timeoutMs;
 
     const mount = `${runDir.replace(/\\/g, '/')}:/workspace:ro`;
     const inputStr = formatInput(input);
@@ -649,7 +527,7 @@ async function execute({ code, input, language = 'javascript', timeLimit, memory
       mount,
       memoryLimit,
       image: config.image,
-      compileAndRun: config.compileAndRun
+      compileAndRun: executionCommand
     });
 
     const result = spawnSync(
@@ -658,7 +536,7 @@ async function execute({ code, input, language = 'javascript', timeLimit, memory
       {
         input: inputStr,
         encoding: 'utf8',
-        timeout: timeoutMs,
+        timeout: processTimeoutMs,
         windowsHide: true,
         maxBuffer: 512 * 1024, // 512 KB output buffer protection
       }
@@ -667,6 +545,15 @@ async function execute({ code, input, language = 'javascript', timeLimit, memory
     const time = Number(process.hrtime.bigint() - started) / 1e6;
 
     if (result.error?.code === 'ETIMEDOUT' || result.signal) {
+      return {
+        verdict: 'time_limit',
+        error: `Execution exceeded the time limit (${(timeoutMs / 1000).toFixed(1)}s).`,
+        time: Math.round(time),
+        memory: null,
+      };
+    }
+
+    if (language === 'java' && [124, 137, 143].includes(result.status)) {
       return {
         verdict: 'time_limit',
         error: `Execution exceeded the time limit (${(timeoutMs / 1000).toFixed(1)}s).`,
@@ -695,10 +582,6 @@ async function execute({ code, input, language = 'javascript', timeLimit, memory
 
     if (result.status !== 0) {
       if (/failed to connect to the docker API|Cannot connect to the Docker daemon|daemon is not running/i.test(rawError)) {
-        if (process.env.NODE_ENV === 'test') {
-          return executeLocalFallback({ language, runDir, filePath, inputStr, timeoutMs });
-        }
-
         return {
           verdict: 'server_error',
           error: 'Docker sandbox runner is unreachable or daemon is not running.',
@@ -729,4 +612,3 @@ async function execute({ code, input, language = 'javascript', timeLimit, memory
 }
 
 module.exports = { execute, matches, normalize, wrapper, getRunnerArgs, LANGUAGES };
-

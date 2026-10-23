@@ -88,7 +88,7 @@ export default function SolvedStatsCard({
             <path
               d={easyPath}
               fill="none"
-              stroke="#00e699"
+              stroke="#4ade80"
               strokeWidth={strokeWidth}
               strokeLinecap="round"
               strokeDasharray={`${easyLen} ${easyLen}`}
@@ -152,7 +152,7 @@ export default function SolvedStatsCard({
               /{totalProblems}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-sm text-[#00e699] font-semibold mt-1.5">
+          <div className="flex items-center gap-1.5 text-sm text-[#ff5b63] font-semibold mt-1.5">
             <Check size={16} className="stroke-[3]" />
             <span className="text-white font-semibold">Solved</span>
           </div>
@@ -165,8 +165,8 @@ export default function SolvedStatsCard({
       {/* Right side: Difficulty Cards */}
       <div className="flex flex-col gap-3.5 w-full sm:w-52">
         {/* Easy Card */}
-        <div className="flex flex-col items-center justify-center rounded-xl bg-emerald-950/20 px-5 py-3.5 border border-emerald-500/20 hover:border-emerald-500/40 hover:bg-emerald-950/30 transition-all shadow-sm">
-          <span className="text-sm font-bold text-[#00e699]">Easy</span>
+        <div className="flex flex-col items-center justify-center rounded-xl bg-green-950/20 px-5 py-3.5 border border-green-500/20 hover:border-green-500/40 hover:bg-green-950/30 transition-all shadow-sm">
+          <span className="text-sm font-bold text-green-400">Easy</span>
           <span className="text-lg font-bold text-white mt-0.5">
             {easy.solved}/{easy.total}
           </span>

@@ -25,25 +25,13 @@ import {
 import { useNavigate } from 'react-router-dom';
 import SiteHeader from '../components/SiteHeader';
 import { useAuth } from '../context/AuthContext';
+import { getInitialsAvatar, getUserAvatar } from '../utils/userAvatar';
 
 const API = 'http://localhost:5000/api';
 
-const fallbackPicture = name => {
-  const initials = (name || 'User')
-    .trim()
-    .split(/\s+/)
-    .map(part => part[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '') || 'U';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="60" fill="#7f1d1d"/><circle cx="60" cy="60" r="54" fill="#991b1b"/><text x="60" y="72" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="44" font-weight="700">${initials}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-};
-
 export default function Profile() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, updateUser } = useAuth();
   const fileInput = useRef(null);
 
   const [user, setUser] = useState(null);
@@ -192,6 +180,7 @@ export default function Profile() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message);
         setUser(data);
+        updateUser(data);
         setMessage('Profile picture updated successfully.');
       } catch (error) {
         setMessage(error.message || 'Could not update your profile picture.');
@@ -218,6 +207,7 @@ export default function Profile() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to update profile');
       setUser(data);
+      updateUser(data);
       setIsEditing(false);
       setMessage('Profile details updated successfully.');
     } catch (error) {
@@ -236,7 +226,7 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-400">
+      <main className="af-page af-profile grid min-h-screen place-items-center bg-zinc-950 text-zinc-400">
         <div className="flex items-center gap-3">
           <LoaderCircle size={20} className="animate-spin text-red-500" />
           <span>Loading profile…</span>
@@ -257,10 +247,10 @@ export default function Profile() {
   const acceptanceRate =
     totalSubmissions > 0 ? Math.round((acceptedSubmissions.length / totalSubmissions) * 100) : 0;
 
-  const imageSource = user.picture || fallbackPicture(user.name);
+  const imageSource = getUserAvatar(user);
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
+    <main className="af-page af-profile min-h-screen bg-zinc-950 text-white">
       <SiteHeader />
 
       <section className="mx-auto grid max-w-6xl gap-6 px-4 sm:px-6 py-10 lg:grid-cols-[320px_1fr] lg:py-12">
@@ -275,8 +265,9 @@ export default function Profile() {
                 alt={`${user.name}'s profile`}
                 onError={event => {
                   event.currentTarget.onerror = null;
-                  event.currentTarget.src = fallbackPicture(user.name);
+                  event.currentTarget.src = getInitialsAvatar(user);
                 }}
+                referrerPolicy="no-referrer"
                 className="h-28 w-28 rounded-full border-2 border-red-500 object-cover shadow-lg shadow-red-500/10"
               />
               <button
@@ -336,7 +327,7 @@ export default function Profile() {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-600 hover:text-white"
+              className="af-profile-signout flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
             >
               <LogOut size={16} />
               <span>Sign Out</span>
@@ -360,8 +351,8 @@ export default function Profile() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-                <CheckCircle2 size={16} className="text-emerald-400" />
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold">
+                <CheckCircle2 size={16} className="text-red-400" />
                 <span>Verified Account</span>
               </div>
 
@@ -401,7 +392,7 @@ export default function Profile() {
               role="status"
               className={`rounded-xl border px-4 py-3 text-sm flex items-center justify-between ${
                 message.includes('updated') || message.includes('success')
-                  ? 'border-green-800/60 bg-green-950/40 text-green-300'
+                  ? 'border-red-800/60 bg-red-950/40 text-red-300'
                   : 'border-red-800/60 bg-red-950/40 text-red-300'
               }`}
             >
@@ -563,7 +554,7 @@ export default function Profile() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-xs font-medium text-zinc-400">Email address</p>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400">
                           Primary
                         </span>
                       </div>
@@ -622,8 +613,8 @@ export default function Profile() {
 
                   <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800">
                     <p className="text-xs text-zinc-400">Account Status</p>
-                    <p className="text-sm font-semibold text-emerald-400 mt-1 flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <p className="text-sm font-semibold text-red-400 mt-1 flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse"></span>
                       Active & Verified
                     </p>
                     <p className="text-[11px] text-zinc-500 mt-1">Full platform privileges</p>
@@ -639,8 +630,8 @@ export default function Profile() {
                       >
                         {copiedId ? (
                           <>
-                            <Check size={12} className="text-emerald-400" />
-                            <span className="text-emerald-400 font-medium">Copied</span>
+                            <Check size={12} className="text-red-400" />
+                            <span className="text-red-400 font-medium">Copied</span>
                           </>
                         ) : (
                           <>
@@ -681,10 +672,10 @@ export default function Profile() {
                   </div>
 
                   <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800">
-                    <p className="text-xs text-zinc-400">Execution Sandbox</p>
+                    <p className="text-xs text-zinc-400">Code Execution</p>
                     <p className="text-sm font-semibold text-zinc-200 mt-1 flex items-center gap-1.5">
                       <Cpu size={14} className="text-red-400" />
-                      Docker Isolated
+                      Isolated execution
                     </p>
                     <p className="text-[11px] text-zinc-500 mt-1">BullMQ + Redis Worker</p>
                   </div>
@@ -713,7 +704,7 @@ export default function Profile() {
 
                   <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 text-center">
                     <p className="text-xs text-zinc-400">Accuracy</p>
-                    <p className="text-xl font-bold text-emerald-400 mt-1">{acceptanceRate}%</p>
+                    <p className="text-xl font-bold text-red-400 mt-1">{acceptanceRate}%</p>
                   </div>
 
                   <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 text-center">

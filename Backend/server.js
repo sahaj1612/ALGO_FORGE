@@ -38,16 +38,26 @@ app.use(cors({
 
 app.use(passport.initialize());
 
-// 4. Request Logging (Structured JSON, sanitizing passwords/tokens/code)
+const metricsService = require('./services/metricsService');
+const metricsController = require('./controllers/metricsController');
+
+// 4. Request Logging & Metrics (Structured JSON & Telemetry)
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
+    const durationMs = Date.now() - start;
+    metricsService.recordHttpRequest({
+      method: req.method,
+      path: req.baseUrl + req.path,
+      statusCode: res.statusCode,
+      durationMs
+    });
     logger.info(`${req.method} ${req.originalUrl} ${res.statusCode}`, {
       correlationId: req.id,
       method: req.method,
       path: req.originalUrl,
       statusCode: res.statusCode,
-      durationMs: Date.now() - start
+      durationMs
     });
   });
   next();
@@ -111,8 +121,9 @@ app.get('/auth/google/callback', (req, res, next) =>
     : res.status(503).json({ message: 'Google OAuth is not configured.' })
 );
 
-// 7. Health Check Endpoints (/health, /health/live, /health/ready)
+// 7. Health Check Endpoints (/health, /health/live, /health/ready) & Prometheus Scrape (/metrics)
 app.use('/health', healthRoutes);
+app.get('/metrics', metricsController.getPrometheus);
 
 // 8. API Routes (mounted on /api and /api/v1)
 app.use('/api', apiRouter);
@@ -133,6 +144,9 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 if (require.main === module) {
+  const { startReconciliationCron } = require('./services/reconciliationService');
+  startReconciliationCron(30000);
+
   app.listen(config.port, () => {
     logger.info(`Server running on port ${config.port}`);
   });

@@ -17,34 +17,47 @@ if (mongoose.connection.readyState === 0) {
  * Core submission processor function
  * Exposed for direct unit/worker test invocation as well as BullMQ processing.
  */
-async function processSubmissionJob({ submissionId, jobId }) {
+async function processSubmissionJob({ submissionId, jobId, correlationId }) {
   const subId = String(submissionId);
-  logger.info('Processing submission job', { submissionId: subId, jobId });
+  logger.info('Processing submission job', { submissionId: subId, jobId, correlationId });
 
-  const sub = await Submission.findById(subId);
+  // The private snapshot is deliberately selected here and nowhere in a
+  // user-facing read path.
+  const sub = await Submission.findById(subId).select('+problemSnapshot');
   if (!sub) {
     logger.warn('Submission not found in database', { submissionId: subId });
     return null;
   }
 
-  await Submission.findByIdAndUpdate(subId, { status: 'running' });
+  await Submission.findByIdAndUpdate(subId, {
+    status: 'running',
+    heartbeatAt: new Date(),
+    ...(correlationId ? { correlationId } : {})
+  });
 
   try {
-    const problem = await Problem.findById(sub.problemId);
-    if (!problem) {
+    const problem = await Problem.findById(sub.problemId).select('version signature adapter hiddenTestcases timeLimit memoryLimit');
+    if (!problem && !sub.problemSnapshot) {
       logger.warn('Problem no longer exists for submission', { submissionId: subId, problemId: sub.problemId });
       return Submission.findByIdAndUpdate(
         subId,
         { status: 'server_error', error: 'Problem no longer exists.' },
-        { new: true }
+        { returnDocument: 'after' }
       );
     }
 
-    const problemVersion = problem.version || 1;
-
-    const casesToRun = (problem.hiddenTestcases && problem.hiddenTestcases.length > 0)
-      ? problem.hiddenTestcases
-      : (problem.testcases || []);
+    // Existing submissions created before snapshots are supported once, but
+    // all newly-created submissions execute from their immutable snapshot.
+    const snapshot = sub.problemSnapshot || {
+      version: problem.version || 1,
+      signature: problem.signature,
+      adapter: problem.adapter,
+      hiddenTestcases: problem.hiddenTestcases || [],
+      timeLimit: problem.timeLimit || 4000,
+      memoryLimit: problem.memoryLimit || 256
+    };
+    const problemVersion = snapshot.version;
+    const casesToRun = snapshot.hiddenTestcases;
 
     const results = [];
     let maxTime = 0;
@@ -57,8 +70,10 @@ async function processSubmissionJob({ submissionId, jobId }) {
         code: sub.code,
         input: test.input,
         language: sub.language,
-        timeLimit: problem.timeLimit || 4000,
-        memoryLimit: problem.memoryLimit || 256
+        signature: snapshot.signature,
+        adapter: snapshot.adapter,
+        timeLimit: snapshot.timeLimit,
+        memoryLimit: snapshot.memoryLimit
       });
 
       maxTime = Math.max(maxTime, result.time || 0);
@@ -97,31 +112,35 @@ async function processSubmissionJob({ submissionId, jobId }) {
         time: maxTime,
         memory: maxMemory || null,
         error: results.find(r => r.error)?.error || null,
-        problemVersion
+        problemVersion,
+        heartbeatAt: new Date()
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     logger.info('Submission judged successfully', {
       submissionId: subId,
       verdict,
       casesRun: results.length,
-      time: maxTime
+      time: maxTime,
+      correlationId
     });
 
     return updated;
   } catch (err) {
     logger.error(`Judge worker error: ${err.message}`, {
       submissionId: subId,
-      error: err.message
+      error: err.message,
+      correlationId
     });
     return Submission.findByIdAndUpdate(
       subId,
       {
         status: 'server_error',
-        error: err.message || 'Worker encountered an internal error.'
+        error: err.message || 'Worker encountered an internal error.',
+        heartbeatAt: new Date()
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
   }
 }
@@ -132,7 +151,8 @@ if (process.env.NODE_ENV !== 'test') {
     worker = new Worker('judge-queue', async (job) => {
       return processSubmissionJob({
         submissionId: job.data.submissionId,
-        jobId: job.id
+        jobId: job.id,
+        correlationId: job.data.correlationId
       });
     }, {
       connection: {

@@ -1,76 +1,94 @@
-import { Code2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Code2, LogIn, Moon, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getInitialsAvatar, getUserAvatar } from '../utils/userAvatar';
 
-export default function SiteHeader() {
+export default function SiteHeader({ homeTheme, onToggleTheme }) {
   const navigate = useNavigate();
   const { user, loginWithGoogle, requireAuth } = useAuth();
+  const [pageTheme, setPageTheme] = useState(() => localStorage.getItem('algoforge-theme') || 'dark');
+  const activeTheme = homeTheme || pageTheme;
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = activeTheme;
+    window.dispatchEvent(new CustomEvent('algoforge-theme-change', { detail: activeTheme }));
+  }, [activeTheme]);
+
+  const toggleTheme = () => {
+    if (onToggleTheme) {
+      onToggleTheme();
+      return;
+    }
+    const nextTheme = activeTheme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('algoforge-theme', nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    setPageTheme(nextTheme);
+  };
 
   return (
-    <nav className="flex items-center justify-between border-b border-red-900/40 px-5 py-4 sm:px-8 sm:py-5">
+    <nav className="af-nav">
       <button
         onClick={() => navigate('/')}
-        className="flex items-center gap-2 text-2xl font-bold text-red-500 cursor-pointer"
+        className="af-brand"
       >
-        <Code2 /> AlgoForge
+        <span className="af-brand-mark"><Code2 /></span> <span>Algo<span className="af-brand-accent">Forge</span></span>
       </button>
 
-      <div className="flex items-center gap-3 sm:gap-6">
-        <div className="hidden items-center gap-6 md:flex">
+      <div className="af-nav-right">
+        <div className="af-nav-links">
           <button
             onClick={() => requireAuth(() => navigate('/practice'))}
-            className="font-medium text-white hover:text-red-500 cursor-pointer"
+            className="af-nav-link"
           >
             Practice
           </button>
           <button
             onClick={() => requireAuth(() => navigate('/explore'))}
-            className="font-medium text-white hover:text-red-500 cursor-pointer"
+            className="af-nav-link"
           >
             Problems
           </button>
           {user && (
             <button
               onClick={() => requireAuth(() => navigate('/dashboard'))}
-              className="font-medium text-white hover:text-red-500 cursor-pointer"
+              className="af-nav-link"
             >
               Dashboard
             </button>
           )}
         </div>
 
+        <button className="af-theme-toggle" type="button" onClick={toggleTheme} aria-label={`Switch to ${activeTheme === "dark" ? "light" : "dark"} theme`} title={`Switch to ${activeTheme === "dark" ? "light" : "dark"} theme`}>
+          {activeTheme === "dark" ? <Moon size={17} /> : <Sun size={17} />}
+        </button>
+
         {user ? (
           <div className="flex items-center gap-3">
             <button
               onClick={() => requireAuth(() => navigate('/profile'))}
-              className="flex items-center transition hover:scale-105"
+              className="af-profile-button"
               aria-label="Open profile"
               title={user.name}
             >
               <img
-                src={
-                  user.picture ||
-                  `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
-                    user.name
-                  )}`
-                }
+                src={getUserAvatar(user)}
                 alt={user.name || "Profile"}
+                referrerPolicy="no-referrer"
                 onError={event => {
                   event.currentTarget.onerror = null;
-                  event.currentTarget.src = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
-                    user.name
-                  )}`;
+                  event.currentTarget.src = getInitialsAvatar(user);
                 }}
-                className="h-9 w-9 rounded-full border-2 border-red-500 object-cover"
+                className="af-profile-image"
               />
             </button>
           </div>
         ) : (
           <button
             onClick={loginWithGoogle}
-            className="rounded-2xl border border-red-500 px-4 py-2 text-red-500 transition hover:bg-red-600 hover:text-white"
+            className="af-login-button"
           >
-            Login
+            <LogIn size={15} /> Login
           </button>
         )}
       </div>
